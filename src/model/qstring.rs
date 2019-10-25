@@ -1,9 +1,14 @@
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Error, Formatter};
 use std::str::FromStr;
 use std::string::ToString;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+// ------------------------------------------------------------------------------------------------
+// Public Types
+// ------------------------------------------------------------------------------------------------
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct QString {
     qualifier: Option<String>,
     value: String,
@@ -15,6 +20,10 @@ pub enum QStringError {
     ComponentInvalid,
     TooManySeparators,
 }
+
+// ------------------------------------------------------------------------------------------------
+// Implementations
+// ------------------------------------------------------------------------------------------------
 
 const SEPARATOR: &str = ":";
 
@@ -77,6 +86,10 @@ impl FromStr for QString {
     }
 }
 
+// ------------------------------------------------------------------------------------------------
+// Private Functions
+// ------------------------------------------------------------------------------------------------
+
 fn validate_part(part: &str) -> Result<String, QStringError> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"[a-zA-Z][a-zA-Z0-9\-_]").unwrap();
@@ -87,6 +100,10 @@ fn validate_part(part: &str) -> Result<String, QStringError> {
         Err(QStringError::ComponentInvalid)
     }
 }
+
+// ------------------------------------------------------------------------------------------------
+// Unit Tests
+// ------------------------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
