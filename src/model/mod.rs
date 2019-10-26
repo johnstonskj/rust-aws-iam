@@ -120,9 +120,10 @@
 
 pub mod builder;
 
-pub mod impls;
-
 pub mod qstring;
 
 pub mod types;
 pub use types::*;
+
+pub mod impls;
+pub use impls::*;

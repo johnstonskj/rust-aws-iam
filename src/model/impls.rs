@@ -18,6 +18,26 @@ impl Policy {
     }
 }
 
+impl Display for Policy {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match serde_json::to_string(self) {
+            Ok(json) => write!(f, "{}", json),
+            Err(_) => Err(fmt::Error),
+        }
+    }
+}
+
+impl FromStr for Policy {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match serde_json::from_str(s) {
+            Ok(policy) => Ok(policy),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+}
+
 impl Statement {
     /// Create a minimal `Statement` with only required fields.
     ///
