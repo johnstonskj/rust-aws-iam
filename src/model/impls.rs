@@ -1,20 +1,36 @@
-// ------------------------------------------------------------------------------------------------
-// Implementations
-// ------------------------------------------------------------------------------------------------
 use crate::model::types::*;
+use regex::Regex;
+use serde::export::fmt::Error;
+use serde::export::Formatter;
 use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::fmt::Display;
 use std::str::FromStr;
+use std::string::ToString;
+use uuid::Uuid;
+
+// ------------------------------------------------------------------------------------------------
+// Implementations
+// ------------------------------------------------------------------------------------------------
+
+// Policy -----------------------------------------------------------------------------------------
 
 impl Policy {
     /// Create a minimal `Policy` with only required fields.
     pub fn new(statement: Statements) -> Self {
         Policy {
-            version: Some(Version::V2012),
+            version: Some(Self::default_version()),
             id: None,
             statement,
         }
+    }
+
+    pub fn default_version() -> Version {
+        Version::V2012
+    }
+
+    pub fn new_id() -> String {
+        random_id("pid_")
     }
 }
 
@@ -38,6 +54,125 @@ impl FromStr for Policy {
     }
 }
 
+// QString ----------------------------------------------------------------------------------------
+
+const SEPARATOR: &str = ":";
+
+impl QString {
+    pub fn new(qualifier: String, value: String) -> Self {
+        match (validate_part(&qualifier), validate_part(&value)) {
+            (Ok(_), Ok(_)) => QString {
+                qualifier: Some(qualifier),
+                value,
+            },
+            _ => panic!("Invalid format for qualifier or value"),
+        }
+    }
+
+    pub fn unqualified(value: String) -> Self {
+        match validate_part(&value) {
+            Ok(_) => QString {
+                qualifier: None,
+                value,
+            },
+            _ => panic!("Invalid format for value"),
+        }
+    }
+
+    pub fn qualifier(&self) -> &Option<String> {
+        &self.qualifier
+    }
+
+    pub fn value(&self) -> &String {
+        &self.value
+    }
+}
+
+impl Display for QString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match &self.qualifier {
+            Some(qualifier) => write!(f, "{}{}{}", qualifier, SEPARATOR, &self.value),
+            None => write!(f, "{}", &self.value),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum QStringError {
+    EmptyString,
+    ComponentInvalid,
+    TooManySeparators,
+}
+
+impl FromStr for QString {
+    type Err = QStringError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            Err(QStringError::EmptyString)
+        } else {
+            let parts = s.split(SEPARATOR).collect::<Vec<&str>>();
+            match parts.len() {
+                1 => Ok(QString::unqualified(validate_part(parts.get(0).unwrap())?)),
+                2 => Ok(QString::new(
+                    validate_part(parts.get(0).unwrap())?,
+                    validate_part(parts.get(1).unwrap())?,
+                )),
+                _ => Err(QStringError::TooManySeparators),
+            }
+        }
+    }
+}
+impl Serialize for QString {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for QString {
+    fn deserialize<D>(deserializer: D) -> Result<QString, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_string(QStringVisitor)
+    }
+}
+
+struct QStringVisitor;
+
+impl<'de> Visitor<'de> for QStringVisitor {
+    type Value = QString;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("a qualified string")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        QString::from_str(&value).map_err(de::Error::custom)
+    }
+
+    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        self.visit_str(&value)
+    }
+}
+
+impl Display for QStringError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        write!(f, "{:?}", self)
+    }
+}
+
+// Statement --------------------------------------------------------------------------------------
+
 impl Statement {
     /// Create a minimal `Statement` with only required fields.
     ///
@@ -46,10 +181,11 @@ impl Statement {
     /// ```
     /// use aws_iam::model::*;
     /// use aws_iam::model::builder::*;
+    /// use std::str::FromStr;
     ///
     /// let statement = Statement::new(
     ///     Effect::Allow,
-    ///     Action::Action(this("s3:ListBucket")),
+    ///     Action::Action(Qualified::One("s3:ListBucket".parse().unwrap())),
     ///     Resource::Resource(this("arn:aws:s3:::example_bucket")),
     /// );
     /// ```
@@ -64,13 +200,19 @@ impl Statement {
             condition: None,
         }
     }
+
+    pub fn new_sid() -> String {
+        random_id("sid_")
+    }
 }
 
-impl ConditionType {
-    pub fn new(base: BaseConditionType) -> Self {
+// ConditionOperator ----------------------------------------------------------------------------------
+
+impl ConditionOperator {
+    pub fn new(base: GlobalConditionOperator) -> Self {
         match base {
-            BaseConditionType::Other(other) => Self::new_other(other),
-            base @ _ => ConditionType {
+            GlobalConditionOperator::Other(other) => Self::new_other(other),
+            base @ _ => ConditionOperator {
                 quantifier: None,
                 base_type: base,
                 only_if_exists: false,
@@ -78,38 +220,37 @@ impl ConditionType {
         }
     }
 
-    pub fn new_other(condition: String) -> Self {
-        assert!(condition.chars().all(|c| c.is_ascii_alphabetic()));
-        ConditionType {
+    pub fn new_other(condition: QString) -> Self {
+        ConditionOperator {
             quantifier: None,
-            base_type: BaseConditionType::Other(condition),
+            base_type: GlobalConditionOperator::Other(condition),
             only_if_exists: false,
         }
     }
 
     pub fn for_all(self) -> Self {
-        ConditionType {
-            quantifier: Some(ConditionTypeQuantifier::ForAllValues),
+        ConditionOperator {
+            quantifier: Some(ConditionOperatorQuantifier::ForAllValues),
             ..self
         }
     }
 
     pub fn for_any(self) -> Self {
-        ConditionType {
-            quantifier: Some(ConditionTypeQuantifier::ForAnyValue),
+        ConditionOperator {
+            quantifier: Some(ConditionOperatorQuantifier::ForAnyValue),
             ..self
         }
     }
 
     pub fn if_exists(self) -> Self {
-        ConditionType {
+        ConditionOperator {
             only_if_exists: true,
             ..self
         }
     }
 }
 
-impl Display for ConditionType {
+impl Display for ConditionOperator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(
             f,
@@ -125,38 +266,38 @@ impl Display for ConditionType {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum ConditionTypeError {
+pub enum ConditionOperatorError {
     EmptyString,
     InvalidQuantifier,
-    InvalidBaseConditionType,
+    InvalidGlobalConditionOperator,
     InvalidFormat,
 }
 
-impl Display for ConditionTypeError {
+impl Display for ConditionOperatorError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "{:?}", self)
     }
 }
 
-impl FromStr for ConditionType {
-    type Err = ConditionTypeError;
+impl FromStr for ConditionOperator {
+    type Err = ConditionOperatorError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
-            return Err(ConditionTypeError::EmptyString);
+            return Err(ConditionOperatorError::EmptyString);
         }
         let mut s = s.clone();
         let quantifier = if s.starts_with("ForAllValues:") {
             s = &s[13..];
-            Some(ConditionTypeQuantifier::ForAllValues)
+            Some(ConditionOperatorQuantifier::ForAllValues)
         } else if s.starts_with("ForAnyValue:") {
             s = &s[12..];
-            Some(ConditionTypeQuantifier::ForAnyValue)
+            Some(ConditionOperatorQuantifier::ForAnyValue)
         } else {
             None
         };
         if s.contains(":") {
-            return Err(ConditionTypeError::InvalidQuantifier);
+            return Err(ConditionOperatorError::InvalidQuantifier);
         }
         let only_if_exists = if s.ends_with("IfExists") {
             let end = s.len() - 8;
@@ -166,39 +307,39 @@ impl FromStr for ConditionType {
             false
         };
         if !s.chars().all(|c| c.is_ascii_alphabetic()) {
-            return Err(ConditionTypeError::InvalidBaseConditionType);
+            return Err(ConditionOperatorError::InvalidGlobalConditionOperator);
         }
         let base_type = match s {
-            "StringEquals" => BaseConditionType::StringEquals,
-            "StringNotEquals" => BaseConditionType::StringNotEquals,
-            "StringEqualsIgnoreCase" => BaseConditionType::StringEqualsIgnoreCase,
-            "StringNotEqualsIgnoreCase" => BaseConditionType::StringNotEqualsIgnoreCase,
-            "StringLike" => BaseConditionType::StringLike,
-            "StringNotLike" => BaseConditionType::StringNotLike,
-            "NumericEquals" => BaseConditionType::NumericEquals,
-            "NumericNotEquals" => BaseConditionType::NumericNotEquals,
-            "NumericLessThan" => BaseConditionType::NumericLessThan,
-            "NumericLessThanEquals" => BaseConditionType::NumericLessThanEquals,
-            "NumericGreaterThan" => BaseConditionType::NumericGreaterThan,
-            "NumericGreaterThanEquals" => BaseConditionType::NumericGreaterThanEquals,
-            "DateEquals" => BaseConditionType::DateEquals,
-            "DateNotEquals" => BaseConditionType::DateNotEquals,
-            "DateLessThan" => BaseConditionType::DateLessThan,
-            "DateLessThanEquals" => BaseConditionType::DateLessThanEquals,
-            "DateGreaterThan" => BaseConditionType::DateGreaterThan,
-            "DateGreaterThanEquals" => BaseConditionType::DateGreaterThanEquals,
-            "Bool" => BaseConditionType::Bool,
-            "BinaryEquals" => BaseConditionType::BinaryEquals,
-            "IpAddress" => BaseConditionType::IpAddress,
-            "NotIpAddress" => BaseConditionType::NotIpAddress,
-            "ArnEquals" => BaseConditionType::ArnEquals,
-            "ArnLike" => BaseConditionType::ArnLike,
-            "ArnNotEquals" => BaseConditionType::ArnNotEquals,
-            "ArnNotLike" => BaseConditionType::ArnNotLike,
-            "Null" => BaseConditionType::Null,
-            other => BaseConditionType::Other(other.to_string()),
+            "StringEquals" => GlobalConditionOperator::StringEquals,
+            "StringNotEquals" => GlobalConditionOperator::StringNotEquals,
+            "StringEqualsIgnoreCase" => GlobalConditionOperator::StringEqualsIgnoreCase,
+            "StringNotEqualsIgnoreCase" => GlobalConditionOperator::StringNotEqualsIgnoreCase,
+            "StringLike" => GlobalConditionOperator::StringLike,
+            "StringNotLike" => GlobalConditionOperator::StringNotLike,
+            "NumericEquals" => GlobalConditionOperator::NumericEquals,
+            "NumericNotEquals" => GlobalConditionOperator::NumericNotEquals,
+            "NumericLessThan" => GlobalConditionOperator::NumericLessThan,
+            "NumericLessThanEquals" => GlobalConditionOperator::NumericLessThanEquals,
+            "NumericGreaterThan" => GlobalConditionOperator::NumericGreaterThan,
+            "NumericGreaterThanEquals" => GlobalConditionOperator::NumericGreaterThanEquals,
+            "DateEquals" => GlobalConditionOperator::DateEquals,
+            "DateNotEquals" => GlobalConditionOperator::DateNotEquals,
+            "DateLessThan" => GlobalConditionOperator::DateLessThan,
+            "DateLessThanEquals" => GlobalConditionOperator::DateLessThanEquals,
+            "DateGreaterThan" => GlobalConditionOperator::DateGreaterThan,
+            "DateGreaterThanEquals" => GlobalConditionOperator::DateGreaterThanEquals,
+            "Bool" => GlobalConditionOperator::Bool,
+            "BinaryEquals" => GlobalConditionOperator::BinaryEquals,
+            "IpAddress" => GlobalConditionOperator::IpAddress,
+            "NotIpAddress" => GlobalConditionOperator::NotIpAddress,
+            "ArnEquals" => GlobalConditionOperator::ArnEquals,
+            "ArnLike" => GlobalConditionOperator::ArnLike,
+            "ArnNotEquals" => GlobalConditionOperator::ArnNotEquals,
+            "ArnNotLike" => GlobalConditionOperator::ArnNotLike,
+            "Null" => GlobalConditionOperator::Null,
+            other => GlobalConditionOperator::Other(other.parse().unwrap()),
         };
-        Ok(ConditionType {
+        Ok(ConditionOperator {
             quantifier,
             base_type,
             only_if_exists,
@@ -206,7 +347,7 @@ impl FromStr for ConditionType {
     }
 }
 
-impl Serialize for ConditionType {
+impl Serialize for ConditionOperator {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -215,19 +356,19 @@ impl Serialize for ConditionType {
     }
 }
 
-impl<'de> Deserialize<'de> for ConditionType {
-    fn deserialize<D>(deserializer: D) -> Result<ConditionType, D::Error>
+impl<'de> Deserialize<'de> for ConditionOperator {
+    fn deserialize<D>(deserializer: D) -> Result<ConditionOperator, D::Error>
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_string(ConditionTypeVisitor)
+        deserializer.deserialize_string(ConditionOperatorVisitor)
     }
 }
 
-struct ConditionTypeVisitor;
+struct ConditionOperatorVisitor;
 
-impl<'de> Visitor<'de> for ConditionTypeVisitor {
-    type Value = ConditionType;
+impl<'de> Visitor<'de> for ConditionOperatorVisitor {
+    type Value = ConditionOperator;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("a condition type string")
@@ -237,7 +378,7 @@ impl<'de> Visitor<'de> for ConditionTypeVisitor {
     where
         E: de::Error,
     {
-        ConditionType::from_str(&value).map_err(de::Error::custom)
+        ConditionOperator::from_str(&value).map_err(de::Error::custom)
     }
 
     fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
@@ -245,6 +386,31 @@ impl<'de> Visitor<'de> for ConditionTypeVisitor {
         E: de::Error,
     {
         self.visit_str(&value)
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+// Private Functions
+// ------------------------------------------------------------------------------------------------
+
+fn random_id(prefix: &str) -> String {
+    format!(
+        "{}{}",
+        prefix,
+        Uuid::new_v4()
+            .to_hyphenated()
+            .encode_lower(&mut Uuid::encode_buffer())
+    )
+}
+
+fn validate_part(part: &str) -> Result<String, QStringError> {
+    lazy_static! {
+        static ref ID: Regex = Regex::new(r"^(\*|[a-zA-Z][a-zA-Z0-9\-_]*\*?)$").unwrap();
+    }
+    if ID.is_match(part) {
+        Ok(part.to_string())
+    } else {
+        Err(QStringError::ComponentInvalid)
     }
 }
 
@@ -257,28 +423,64 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_valid_new() {
+        let q_string = QString::new(String::from("foo"), String::from("bar"));
+        assert_eq!(q_string.qualifier(), &Some(String::from("foo")));
+        assert_eq!(q_string.value(), &String::from("bar"));
+    }
+
+    #[test]
+    fn test_valid_unqualified() {
+        let q_string = QString::unqualified(String::from("bar"));
+        assert_eq!(q_string.qualifier(), &None);
+        assert_eq!(q_string.value(), &String::from("bar"));
+    }
+
+    #[test]
+    fn test_valid_from_str() {
+        let q_string = QString::from_str("foo:bar").unwrap();
+        assert_eq!(q_string.qualifier(), &Some(String::from("foo")));
+        assert_eq!(q_string.value(), &String::from("bar"));
+
+        let q_string = QString::from_str("bar").unwrap();
+        assert_eq!(q_string.qualifier(), &None);
+        assert_eq!(q_string.value(), &String::from("bar"));
+    }
+
+    #[test]
     fn test_condition_type_ok() {
-        assert!(ConditionType::from_str("StringEquals").is_ok());
-        assert!(ConditionType::from_str("Null").is_ok());
-        assert!(ConditionType::from_str("FooTest").is_ok());
-        assert!(ConditionType::from_str("ForAllValues:Null").is_ok());
-        assert!(ConditionType::from_str("NullIfExists").is_ok());
-        assert!(ConditionType::from_str("ForAllValues:NullIfExists").is_ok());
+        assert!(ConditionOperator::from_str("StringEquals").is_ok());
+        assert!(ConditionOperator::from_str("Null").is_ok());
+        assert!(ConditionOperator::from_str("FooTest").is_ok());
+        assert!(ConditionOperator::from_str("ForAllValues:Null").is_ok());
+        assert!(ConditionOperator::from_str("NullIfExists").is_ok());
+        assert!(ConditionOperator::from_str("ForAllValues:NullIfExists").is_ok());
+    }
+
+    #[test]
+    fn test_condition_type_parts_ok() {
+        let c_type = ConditionOperator::from_str("ForAllValues:NullIfExists").unwrap();
+        assert_eq!(
+            c_type.quantifier,
+            Some(ConditionOperatorQuantifier::ForAllValues)
+        );
+        assert_eq!(c_type.base_type, GlobalConditionOperator::Null);
+        assert_eq!(c_type.only_if_exists, true);
     }
 
     #[test]
     fn test_condition_type_bad() {
         assert_eq!(
-            ConditionType::from_str(""),
-            Err(ConditionTypeError::EmptyString)
+            ConditionOperator::from_str(""),
+            Err(ConditionOperatorError::EmptyString)
         );
         assert_eq!(
-            ConditionType::from_str("ForNone:StringEquals"),
-            Err(ConditionTypeError::InvalidQuantifier)
+            ConditionOperator::from_str("ForNone:StringEquals"),
+            Err(ConditionOperatorError::InvalidQuantifier)
         );
         assert_eq!(
-            ConditionType::from_str("String="),
-            Err(ConditionTypeError::InvalidBaseConditionType)
+            ConditionOperator::from_str("String="),
+            Err(ConditionOperatorError::InvalidGlobalConditionOperator)
         );
     }
 }

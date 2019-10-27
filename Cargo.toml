@@ -17,6 +17,7 @@ required-features = ["command-line"]
 command-line = ["structopt", "clap-verbosity-flag", "clap-log-flag", "log"]
 
 [dependencies]
+uuid = { version = "0.8", features = ["serde", "v4"] }
 lazy_static = "1.4.0"
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }

@@ -18,16 +18,16 @@ pub fn any_of(values: Vec<&str>) -> Qualified {
 }
 
 pub fn condition_one(
-    condition: &mut HashMap<ConditionType, HashMap<String, ConditionValues>>,
-    ctype: ConditionType,
+    condition: &mut HashMap<ConditionOperator, HashMap<String, ConditionValues>>,
+    c_oper: ConditionOperator,
     key: String,
     value: String,
-) -> &mut HashMap<ConditionType, HashMap<String, ConditionValues>> {
+) -> &mut HashMap<ConditionOperator, HashMap<String, ConditionValues>> {
     let entry: HashMap<String, ConditionValues> =
         vec![(key, ConditionValues::One(ConditionValue::String(value)))]
             .iter()
             .cloned()
             .collect();
-    condition.insert(ctype, entry);
+    condition.insert(c_oper, entry);
     condition
 }

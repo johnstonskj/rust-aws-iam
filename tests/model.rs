@@ -31,7 +31,7 @@ fn test_simple_access_policy() {
         id: Some("test_simple_access_policy".to_string()),
         statement: Statements::One(Statement::new(
             Effect::Allow,
-            Action::Action(this("s3:ListBucket")),
+            Action::Action(Qualified::One("s3:ListBucket".parse().unwrap())),
             Resource::Resource(this("arn:aws:s3:::example_bucket")),
         )),
     };
@@ -59,7 +59,7 @@ fn test_access_policy_with_statements() {
                 sid: None,
                 principal: None,
                 effect: Effect::Allow,
-                action: Action::Action(this("s3:ListBucket")),
+                action: Action::Action(Qualified::One("s3:ListBucket".parse().unwrap())),
                 resource: Resource::Resource(this("arn:aws:s3:::example_bucket")),
                 condition: None,
             },
@@ -67,7 +67,7 @@ fn test_access_policy_with_statements() {
                 sid: None,
                 principal: None,
                 effect: Effect::Allow,
-                action: Action::Action(this("s3:SomethingElse")),
+                action: Action::Action(Qualified::One("s3:SomethingElse".parse().unwrap())),
                 resource: Resource::Resource(this("arn:aws:s3:::example_bucket_2")),
                 condition: None,
             },
@@ -109,7 +109,7 @@ fn test_access_policy_with_principal() {
             sid: Some("1".to_string()),
             principal: Some(Principal::Principal(principal)),
             effect: Effect::Allow,
-            action: Action::Action(this("s3:*")),
+            action: Action::Action(Qualified::One("s3:*".parse().unwrap())),
             resource: Resource::Resource(any_of(vec![
                 "arn:aws:s3:::mybucket",
                 "arn:aws:s3:::mybucket/*",
@@ -144,10 +144,11 @@ fn test_access_policy_with_condition() {
     }
     */
     let expected = "{\"Version\":\"2012-10-17\",\"Id\":\"test_access_policy_with_condition\",\"Statement\":[{\"Sid\":\"ThirdStatement\",\"Effect\":\"Allow\",\"Action\":[\"s3:List*\",\"s3:Get*\"],\"Resource\":[\"arn:aws:s3:::confidential-data\",\"arn:aws:s3:::confidential-data/*\"],\"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"}}}]}";
-    let mut condition: HashMap<ConditionType, HashMap<String, ConditionValues>> = HashMap::new();
+    let mut condition: HashMap<ConditionOperator, HashMap<String, ConditionValues>> =
+        HashMap::new();
     condition_one(
         &mut condition,
-        ConditionType::new(BaseConditionType::Bool),
+        ConditionOperator::new(GlobalConditionOperator::Bool),
         "aws:MultiFactorAuthPresent".to_string(),
         "true".to_string(),
     );
@@ -158,7 +159,10 @@ fn test_access_policy_with_condition() {
             sid: Some("ThirdStatement".to_string()),
             principal: None,
             effect: Effect::Allow,
-            action: Action::Action(any_of(vec!["s3:List*", "s3:Get*"])),
+            action: Action::Action(Qualified::AnyOf(vec![
+                "s3:List*".parse().unwrap(),
+                "s3:Get*".parse().unwrap(),
+            ])),
             resource: Resource::Resource(any_of(vec![
                 "arn:aws:s3:::confidential-data",
                 "arn:aws:s3:::confidential-data/*",
