@@ -1,7 +1,6 @@
+use crate::model::containers::OneOrAll;
+use crate::model::qstring::QString;
 use crate::model::types::*;
-use regex::Regex;
-use serde::export::fmt::Error;
-use serde::export::Formatter;
 use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use std::fmt::Display;
@@ -17,7 +16,7 @@ use uuid::Uuid;
 
 impl Policy {
     /// Create a minimal `Policy` with only required fields.
-    pub fn new(statement: Statements) -> Self {
+    pub fn new(statement: OneOrAll<Statement>) -> Self {
         Policy {
             version: Some(Self::default_version()),
             id: None,
@@ -26,7 +25,7 @@ impl Policy {
     }
 
     pub fn default_version() -> Version {
-        Version::V2012
+        Version::V2008
     }
 
     pub fn new_id() -> String {
@@ -54,123 +53,6 @@ impl FromStr for Policy {
     }
 }
 
-// QString ----------------------------------------------------------------------------------------
-
-const SEPARATOR: &str = ":";
-
-impl QString {
-    pub fn new(qualifier: String, value: String) -> Self {
-        match (validate_part(&qualifier), validate_part(&value)) {
-            (Ok(_), Ok(_)) => QString {
-                qualifier: Some(qualifier),
-                value,
-            },
-            _ => panic!("Invalid format for qualifier or value"),
-        }
-    }
-
-    pub fn unqualified(value: String) -> Self {
-        match validate_part(&value) {
-            Ok(_) => QString {
-                qualifier: None,
-                value,
-            },
-            _ => panic!("Invalid format for value"),
-        }
-    }
-
-    pub fn qualifier(&self) -> &Option<String> {
-        &self.qualifier
-    }
-
-    pub fn value(&self) -> &String {
-        &self.value
-    }
-}
-
-impl Display for QString {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match &self.qualifier {
-            Some(qualifier) => write!(f, "{}{}{}", qualifier, SEPARATOR, &self.value),
-            None => write!(f, "{}", &self.value),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum QStringError {
-    EmptyString,
-    ComponentInvalid,
-    TooManySeparators,
-}
-
-impl FromStr for QString {
-    type Err = QStringError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.is_empty() {
-            Err(QStringError::EmptyString)
-        } else {
-            let parts = s.split(SEPARATOR).collect::<Vec<&str>>();
-            match parts.len() {
-                1 => Ok(QString::unqualified(validate_part(parts.get(0).unwrap())?)),
-                2 => Ok(QString::new(
-                    validate_part(parts.get(0).unwrap())?,
-                    validate_part(parts.get(1).unwrap())?,
-                )),
-                _ => Err(QStringError::TooManySeparators),
-            }
-        }
-    }
-}
-impl Serialize for QString {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for QString {
-    fn deserialize<D>(deserializer: D) -> Result<QString, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_string(QStringVisitor)
-    }
-}
-
-struct QStringVisitor;
-
-impl<'de> Visitor<'de> for QStringVisitor {
-    type Value = QString;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("a qualified string")
-    }
-
-    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        QString::from_str(&value).map_err(de::Error::custom)
-    }
-
-    fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        self.visit_str(&value)
-    }
-}
-
-impl Display for QStringError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        write!(f, "{:?}", self)
-    }
-}
-
 // Statement --------------------------------------------------------------------------------------
 
 impl Statement {
@@ -185,7 +67,7 @@ impl Statement {
     ///
     /// let statement = Statement::new(
     ///     Effect::Allow,
-    ///     Action::Action(Qualified::One("s3:ListBucket".parse().unwrap())),
+    ///     Action::Action(OneOrAny::One("s3:ListBucket".parse().unwrap())),
     ///     Resource::Resource(this("arn:aws:s3:::example_bucket")),
     /// );
     /// ```
@@ -214,7 +96,7 @@ impl ConditionOperator {
             GlobalConditionOperator::Other(other) => Self::new_other(other),
             base @ _ => ConditionOperator {
                 quantifier: None,
-                base_type: base,
+                operator: base,
                 only_if_exists: false,
             },
         }
@@ -223,7 +105,7 @@ impl ConditionOperator {
     pub fn new_other(condition: QString) -> Self {
         ConditionOperator {
             quantifier: None,
-            base_type: GlobalConditionOperator::Other(condition),
+            operator: GlobalConditionOperator::Other(condition),
             only_if_exists: false,
         }
     }
@@ -259,7 +141,7 @@ impl Display for ConditionOperator {
                 Some(quantifier) => format!("{:?}:", quantifier),
                 None => "".to_string(),
             },
-            self.base_type,
+            self.operator,
             if self.only_if_exists { "IfExists" } else { "" }
         )
     }
@@ -309,7 +191,7 @@ impl FromStr for ConditionOperator {
         if !s.chars().all(|c| c.is_ascii_alphabetic()) {
             return Err(ConditionOperatorError::InvalidGlobalConditionOperator);
         }
-        let base_type = match s {
+        let operator = match s {
             "StringEquals" => GlobalConditionOperator::StringEquals,
             "StringNotEquals" => GlobalConditionOperator::StringNotEquals,
             "StringEqualsIgnoreCase" => GlobalConditionOperator::StringEqualsIgnoreCase,
@@ -341,7 +223,7 @@ impl FromStr for ConditionOperator {
         };
         Ok(ConditionOperator {
             quantifier,
-            base_type,
+            operator,
             only_if_exists,
         })
     }
@@ -403,17 +285,6 @@ fn random_id(prefix: &str) -> String {
     )
 }
 
-fn validate_part(part: &str) -> Result<String, QStringError> {
-    lazy_static! {
-        static ref ID: Regex = Regex::new(r"^(\*|[a-zA-Z][a-zA-Z0-9\-_]*\*?)$").unwrap();
-    }
-    if ID.is_match(part) {
-        Ok(part.to_string())
-    } else {
-        Err(QStringError::ComponentInvalid)
-    }
-}
-
 // ------------------------------------------------------------------------------------------------
 // Unit Tests
 // ------------------------------------------------------------------------------------------------
@@ -464,7 +335,7 @@ mod test {
             c_type.quantifier,
             Some(ConditionOperatorQuantifier::ForAllValues)
         );
-        assert_eq!(c_type.base_type, GlobalConditionOperator::Null);
+        assert_eq!(c_type.operator, GlobalConditionOperator::Null);
         assert_eq!(c_type.only_if_exists, true);
     }
 

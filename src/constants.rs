@@ -13,6 +13,10 @@ From [AWS Global Condition Context Keys](https://docs.aws.amazon.com/IAM/latest/
 
 */
 
+// ------------------------------------------------------------------------------------------------
+// Public Values
+// ------------------------------------------------------------------------------------------------
+
 /// Use this key to compare the date and time of the request with the date and time
 ///  that you specify in the policy.
 pub const AWS_CURRENT_TIME: &str = "aws:CurrentTime";

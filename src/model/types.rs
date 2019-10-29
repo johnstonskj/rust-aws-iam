@@ -1,9 +1,47 @@
+/*!
+Provides the structures and enumerations that define the IAM Rust model.
+
+# Mapping from AWS Names
+
+A JSON policy document includes these elements:
+
+* Optional policy-wide information at the top of the document
+* One or more individual statements
+
+Each statement includes information about a single permission. If a policy includes multiple
+statements, AWS applies a logical OR across the statements when evaluating them. If multiple
+policies apply to a request, AWS applies a logical OR across all of those policies when
+evaluating them. The information in a statement is contained within a series of elements.
+
+* **Version** – Specify the version of the policy language that you want to use. As a best
+  practice, use the latest 2012-10-17 version.
+* **Statement** – Use this main policy element as a container for the following elements. You
+  can include more than one statement in a policy.
+* **Sid** (Optional) – Include an optional statement ID to differentiate between your statements.
+* **Effect** – Use Allow or Deny to indicate whether the policy allows or denies access.
+* **Principal** (Required in only some circumstances) – If you create a resource-based policy,
+  you must indicate the account, user, role, or federated user to which you would like to allow
+  or deny access. If you are creating an IAM permissions policy to attach to a user or role, you
+  cannot include this element. The principal is implied as that user or role.
+* **Action** – Include a list of actions that the policy allows or denies.
+* **Resource** (Required in only some circumstances) – If you create an IAM permissions policy,
+  you must specify a list of resources to which the actions apply. If you create a resource-based
+  policy, this element is optional. If you do not include this element, then the resource to which
+  the action applies is the resource to which the policy is attached.
+* **Condition** (Optional) – Specify the circumstances under which the policy grants permission.
+
+From [Overview of JSON Policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html#access_policies-json).
+*/
+
+use crate::model::containers::*;
+use crate::model::qstring::QString;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
 // ------------------------------------------------------------------------------------------------
+
 ///
 /// An IAM policy resource.
 ///
@@ -17,40 +55,7 @@ pub struct Policy {
     /// The identifier of this policy, if any
     pub id: Option<String>,
     /// One or more policy statements
-    pub statement: Statements,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Statements {
-    One(Statement), // TODO this makes a large enum, consider One(Box<Statement>)
-    All(Vec<Statement>),
-}
-
-///
-/// The Statement element is the main element for a policy. This element is required. It can include multiple elements (see the subsequent sections in this page). The Statement element contains an array of individual statements. Each individual statement is a JSON block enclosed in braces { }.
-///
-/// From [IAM JSON Policy Elements: Statement](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_statement.html).
-///
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct Statement {
-    ///
-    /// The Sid (statement ID) is an optional identifier that you provide for the policy statement. You can assign a Sid value to each statement in a statement array. In services that let you specify an ID element, such as SQS and SNS, the Sid value is just a sub-ID of the policy document's ID. In IAM, the Sid value must be unique within a JSON policy
-    ///
-    /// In IAM, the Sid is not exposed in the IAM API. You can't retrieve a particular statement based on this ID.
-    ///
-    /// From [IAM JSON Policy Elements: Sid](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_sid.html).
-    ///
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sid: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub principal: Option<Principal>,
-    pub effect: Effect,
-    pub action: Action,
-    pub resource: Resource,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub condition: Option<HashMap<ConditionOperator, HashMap<String, ConditionValues>>>,
+    pub statement: OneOrAll<Statement>,
 }
 
 ///
@@ -79,35 +84,61 @@ pub enum Version {
 }
 
 ///
-/// The Effect element is required and specifies whether the statement results in an allow or an explicit deny. Valid values for Effect are Allow and Deny.
+/// The Statement element is the main element for a policy. This element is required. It can
+/// include multiple elements (see the subsequent sections in this page). The Statement element
+/// contains an array of individual statements. Each individual statement is a JSON block
+/// enclosed in braces `{ }`.
+///
+/// From [IAM JSON Policy Elements: Statement](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_statement.html).
+///
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Statement {
+    ///
+    /// The Sid (statement ID) is an optional identifier that you provide for the policy statement.
+    /// You can assign a Sid value to each statement in a statement array. In services that let
+    /// you specify an ID element, such as SQS and SNS, the Sid value is just a sub-ID of the
+    /// policy document's ID. In IAM, the Sid value must be unique within a JSON policy
+    ///
+    /// In IAM, the Sid is not exposed in the IAM API. You can't retrieve a particular statement
+    /// based on this ID.
+    ///
+    /// From [IAM JSON Policy Elements: Sid](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_sid.html).
+    ///
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub principal: Option<Principal>,
+    pub effect: Effect,
+    pub action: Action,
+    pub resource: Resource,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub condition: Option<HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>>>,
+}
+
+///
+/// The Effect element is required and specifies whether the statement results in an allow or an
+/// explicit deny. Valid values for Effect are Allow and Deny.
 ///
 /// From [IAM JSON Policy Elements: Effect](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_effect.html).
 ///
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum Effect {
+    /// The result of successful evaluation of this policy is to allow access.
     Allow,
+    /// The result of successful evaluation of this policy is to deny access.
     Deny,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Qualified<T = String> {
-    #[serde(rename = "*")]
-    Any,
-    One(T),
-    AnyOf(Vec<T>),
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct QString {
-    pub(crate) qualifier: Option<String>,
-    pub(crate) value: String,
-}
-
 ///
-/// The Action element describes the specific action or actions that will be allowed or denied. Statements must include either an Action or NotAction element. Each AWS service has its own set of actions that describe tasks that you can perform with that service.
+/// The Action element describes the specific action or actions that will be allowed or denied.
+/// Statements must include either an Action or NotAction element. Each AWS service has its own
+/// set of actions that describe tasks that you can perform with that service.
 ///
-/// You specify a value using a service namespace as an action prefix (iam, ec2 sqs, sns, s3, etc.) followed by the name of the action to allow or deny. The name must match an action that is supported by the service. The prefix and the action name are case insensitive. For example, iam:ListAccessKeys is the same as IAM:listaccesskeys.
+/// You specify a value using a service namespace as an action prefix (`iam`, `ec2`, `sqs`,
+/// `sns`, `s3`, etc.) followed by the name of the action to allow or deny. The name must match
+/// an action that is supported by the service. The prefix and the action name are case
+/// insensitive. For example, `iam:ListAccessKeys` is the same as `IAM:listaccesskeys`.
 ///
 /// From [IAM JSON Policy Elements: Action](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_action.html)
 /// and [IAM JSON Policy Elements: NotAction](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notaction.html).
@@ -115,20 +146,18 @@ pub struct QString {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Action {
-    Action(Qualified<QString>),
-    NotAction(Qualified<QString>),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum PrincipalType {
-    AWS,
-    Federated,
-    Service,
-    CanonicalUser,
+    /// Asserts that the action in the request **must** match one of the specified ones.
+    Action(OneOrAny<QString>),
+    /// Asserts that the action in the request **must not** match one of the specified ones.
+    NotAction(OneOrAny<QString>),
 }
 
 ///
-/// Use the Principal element to specify the IAM user, federated user, IAM role, AWS account, AWS service, or other principal entity that is allowed or denied access to a resource. You cannot use the Principal element in an IAM identity-based policy. You can use it in the trust policies for IAM roles and in resource-based policies. Resource-based policies are policies that you embed directly in an IAM resource.
+/// Use the Principal element to specify the IAM user, federated user, IAM role, AWS account,
+/// AWS service, or other principal entity that is allowed or denied access to a resource. You
+/// cannot use the Principal element in an IAM identity-based policy. You can use it in the
+/// trust policies for IAM roles and in resource-based policies. Resource-based policies are
+/// policies that you embed directly in an IAM resource.
 ///
 /// From [AWS JSON Policy Elements: Principal](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html)
 /// and [AWS JSON Policy Elements: NotPrincipal](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notprincipal.html).
@@ -136,12 +165,33 @@ pub enum PrincipalType {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Principal {
-    Principal(HashMap<PrincipalType, Qualified>),
-    NotPrincipal(HashMap<PrincipalType, Qualified>),
+    /// Asserts that the principal in the request **must** match one of the specified ones.
+    Principal(HashMap<PrincipalType, OneOrAny>),
+    /// Asserts that the principal in the request **must not** match one of the specified ones.
+    NotPrincipal(HashMap<PrincipalType, OneOrAny>),
 }
 
 ///
-/// The Resource element specifies the object or objects that the statement covers. Statements must include either a Resource or a NotResource element. You specify a resource using an ARN.
+/// This describes the way in which the condition ARNs should be understood.
+///
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PrincipalType {
+    /// Anyone, everyone, or anonymous users.
+    #[serde(rename = "*")]
+    Everyone,
+    /// When you use an AWS account identifier as the principal in a policy, you delegate authority to the account. Within that account, the permissions in the policy statement can be granted to all identities. This includes IAM users and roles in that account. When you specify an AWS account, you can use the account ARN (`arn:aws:iam::AWS-account-ID:root`), or a shortened form that consists of the `AWS:` prefix followed by the account ID.
+    AWS,
+    /// Federated users either using web identity federation or using a SAML identity provider.
+    Federated,
+    /// IAM roles that can be assumed by an AWS service are called service roles. Service roles must include a trust policy. Trust policies are resource-based policies that are attached to a role that define which principals can assume the role. Some service roles have predefined trust policies. However, in some cases, you must specify the service principal in the trust policy. A service principal is an identifier that is used to grant permissions to a service.
+    Service,
+    /// The canonical user ID is an identifier for your account. Because this identifier is used by Amazon S3, only this service provides IAM users with access to the canonical user ID. You can also view the canonical user ID for your account from the AWS Management Console while signed in as the AWS account root user.
+    CanonicalUser,
+}
+
+///
+/// The Resource element specifies the object or objects that the statement covers. Statements
+/// must include either a Resource or a NotResource element. You specify a resource using an ARN.
 ///
 /// From [IAM JSON Policy Elements: Resource](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_resource.html)
 /// and [IAM JSON Policy Elements: NotResource](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notresource.html).
@@ -149,8 +199,10 @@ pub enum Principal {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Resource {
-    Resource(Qualified),
-    NotResource(Qualified),
+    /// Asserts that the resource in the request **must** match one of the specified ones.
+    Resource(OneOrAny),
+    /// Asserts that the resource in the request **must not** match one of the specified ones.
+    NotResource(OneOrAny),
 }
 
 ///
@@ -164,7 +216,9 @@ pub enum Resource {
 ///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ConditionOperatorQuantifier {
+    /// The condition **must** hold true for **all** values provided.
     ForAllValues,
+    /// The condition **must** hold true for **at least** one value provided.
     ForAnyValue,
 }
 
@@ -173,7 +227,7 @@ pub struct ConditionOperator {
     /// Used to test multiple keys or multiple values for a single key in a request.
     pub quantifier: Option<ConditionOperatorQuantifier>,
     /// The condition operator you choose to use.
-    pub base_type: GlobalConditionOperator,
+    pub operator: GlobalConditionOperator,
     /// You use this to say "If the policy key is present in the context of the
     /// request, process the key as specified in the policy. If the key is not
     /// present, evaluate the condition element as true." Other condition elements
@@ -181,6 +235,7 @@ pub struct ConditionOperator {
     /// when checked with ...`IfExists`.
     pub only_if_exists: bool,
 }
+
 ///
 /// Use condition operators in the `Condition` element to match the condition
 /// key and value in the policy against values in the request context.
@@ -275,18 +330,18 @@ pub enum GlobalConditionOperator {
     Other(QString),
 }
 
+///
+/// The value to test an operator against.
+///
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ConditionValue {
+    /// A String (or QString) value.
     String(String),
+    /// A signed 64-bit integer value.
     Integer(i64),
+    /// A 64-bit float value.
     Float(f64),
+    /// A boolean value.
     Bool(bool),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum ConditionValues {
-    One(ConditionValue),
-    All(Vec<ConditionValue>),
 }

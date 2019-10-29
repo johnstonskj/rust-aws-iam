@@ -103,11 +103,11 @@ use aws_iam::model::builder::*;
 let policy = Policy {
     version: Some(Version::V2012),
     id: Some("test_simple_access_policy".to_string()),
-    statement: Statements::One(Statement {
+    statement: OneOrAll::One(Statement {
         sid: None,
         principal: None,
         effect: Effect::Allow,
-        action: Action::Action(Qualified::One("s3:ListBucket".parse().unwrap())),
+        action: Action::Action(OneOrAny::One("s3:ListBucket".parse().unwrap())),
         resource: Resource::Resource(this("arn:aws:s3:::example_bucket")),
         condition: None,
     }),
@@ -118,10 +118,22 @@ println!("JSON: {:#?}", json);
 ```
 */
 
+// ------------------------------------------------------------------------------------------------
+// Modules
+// ------------------------------------------------------------------------------------------------
+
+pub mod arn;
+
 pub mod builder;
 
-pub mod types;
-pub use types::*;
+pub mod containers;
+pub use containers::{OneOrAll, OneOrAny};
 
 pub mod impls;
 pub use impls::*;
+
+pub mod qstring;
+pub use qstring::QString;
+
+pub mod types;
+pub use types::*;
