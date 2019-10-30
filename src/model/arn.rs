@@ -53,6 +53,7 @@ pub const WILD: &str = "*";
 
 const ARN_PREFIX: &str = "arn";
 
+#[allow(dead_code)]
 const ARN_SEPARATOR: &str = ":";
 
 const DEFAULT_PARTITION: &str = "aws";

@@ -69,7 +69,7 @@ pub struct Policy {
 ///
 /// From [IAM JSON Policy Elements: Version](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_version.html).
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Version {
     #[serde(rename = "2008-10-17")]
     /// This is the current version of the policy language, and you should always
@@ -91,7 +91,7 @@ pub enum Version {
 ///
 /// From [IAM JSON Policy Elements: Statement](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_statement.html).
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Statement {
     ///
@@ -122,7 +122,7 @@ pub struct Statement {
 ///
 /// From [IAM JSON Policy Elements: Effect](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_effect.html).
 ///
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Effect {
     /// The result of successful evaluation of this policy is to allow access.
     Allow,
@@ -143,7 +143,7 @@ pub enum Effect {
 /// From [IAM JSON Policy Elements: Action](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_action.html)
 /// and [IAM JSON Policy Elements: NotAction](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notaction.html).
 ///
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Action {
     /// Asserts that the action in the request **must** match one of the specified ones.
@@ -162,7 +162,7 @@ pub enum Action {
 /// From [AWS JSON Policy Elements: Principal](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html)
 /// and [AWS JSON Policy Elements: NotPrincipal](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notprincipal.html).
 ///
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Principal {
     /// Asserts that the principal in the request **must** match one of the specified ones.
@@ -179,13 +179,26 @@ pub enum PrincipalType {
     /// Anyone, everyone, or anonymous users.
     #[serde(rename = "*")]
     Everyone,
-    /// When you use an AWS account identifier as the principal in a policy, you delegate authority to the account. Within that account, the permissions in the policy statement can be granted to all identities. This includes IAM users and roles in that account. When you specify an AWS account, you can use the account ARN (`arn:aws:iam::AWS-account-ID:root`), or a shortened form that consists of the `AWS:` prefix followed by the account ID.
+    /// When you use an AWS account identifier as the principal in a policy, you delegate
+    /// authority to the account. Within that account, the permissions in the policy statement
+    /// can be granted to all identities. This includes IAM users and roles in that account.
+    /// When you specify an AWS account, you can use the account ARN
+    /// (`arn:aws:iam::AWS-account-ID:root`), or a shortened form that consists of the `AWS:`
+    /// prefix followed by the account ID.
     AWS,
     /// Federated users either using web identity federation or using a SAML identity provider.
     Federated,
-    /// IAM roles that can be assumed by an AWS service are called service roles. Service roles must include a trust policy. Trust policies are resource-based policies that are attached to a role that define which principals can assume the role. Some service roles have predefined trust policies. However, in some cases, you must specify the service principal in the trust policy. A service principal is an identifier that is used to grant permissions to a service.
+    /// IAM roles that can be assumed by an AWS service are called service roles. Service roles
+    /// must include a trust policy. Trust policies are resource-based policies that are attached
+    /// to a role that define which principals can assume the role. Some service roles have
+    /// predefined trust policies. However, in some cases, you must specify the service principal
+    /// in the trust policy. A service principal is an identifier that is used to grant
+    /// permissions to a service.
     Service,
-    /// The canonical user ID is an identifier for your account. Because this identifier is used by Amazon S3, only this service provides IAM users with access to the canonical user ID. You can also view the canonical user ID for your account from the AWS Management Console while signed in as the AWS account root user.
+    /// The canonical user ID is an identifier for your account. Because this identifier is
+    /// used by Amazon S3, only this service provides IAM users with access to the canonical
+    /// user ID. You can also view the canonical user ID for your account from the AWS
+    /// Management Console while signed in as the AWS account root user.
     CanonicalUser,
 }
 
@@ -196,7 +209,7 @@ pub enum PrincipalType {
 /// From [IAM JSON Policy Elements: Resource](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_resource.html)
 /// and [IAM JSON Policy Elements: NotResource](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notresource.html).
 ///
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Resource {
     /// Asserts that the resource in the request **must** match one of the specified ones.
