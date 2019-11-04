@@ -4,7 +4,7 @@ Provides basic file read/writer or policies.
 use crate::model::Policy;
 use std::fs::File;
 use std::io;
-use std::io::{BufReader, BufWriter};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
 
 // ------------------------------------------------------------------------------------------------
@@ -37,14 +37,22 @@ pub enum Error {
 ///
 pub fn read_from_file(path: &PathBuf) -> Result<Policy, Error> {
     match File::open(path) {
-        Ok(f) => {
-            let reader = BufReader::new(f);
-            match serde_json::from_reader(reader) {
-                Ok(policy) => Ok(policy),
-                Err(e) => Err(Error::DeserializingJson(e.to_string())),
-            }
-        }
+        Ok(f) => read_from_reader(f),
         Err(e) => Err(Error::ReadingFile(e)),
+    }
+}
+
+///
+/// Read a `Policy` document from any implementation of `std::io::Read`.
+///
+pub fn read_from_reader<R>(reader: R) -> Result<Policy, Error>
+where
+    R: Read + Sized,
+{
+    let reader = BufReader::new(reader);
+    match serde_json::from_reader(reader) {
+        Ok(policy) => Ok(policy),
+        Err(e) => Err(Error::DeserializingJson(e.to_string())),
     }
 }
 
@@ -53,13 +61,18 @@ pub fn read_from_file(path: &PathBuf) -> Result<Policy, Error> {
 ///
 pub fn write_to_file(path: &PathBuf, policy: &Policy) -> Result<(), Error> {
     match File::open(path) {
-        Ok(f) => {
-            let writer = BufWriter::new(f);
-            match serde_json::to_writer_pretty(writer, policy) {
-                Ok(policy) => Ok(policy),
-                Err(e) => Err(Error::SerializingPolicy(e.to_string())),
-            }
-        }
+        Ok(f) => write_to_writer(f, policy),
         Err(e) => Err(Error::WritingFile(e)),
+    }
+}
+
+pub fn write_to_writer<W>(writer: W, policy: &Policy) -> Result<(), Error>
+where
+    W: Write + Sized,
+{
+    let writer = BufWriter::new(writer);
+    match serde_json::to_writer_pretty(writer, policy) {
+        Ok(policy) => Ok(policy),
+        Err(e) => Err(Error::SerializingPolicy(e.to_string())),
     }
 }

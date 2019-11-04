@@ -1,6 +1,8 @@
-#[macro_use]
-extern crate log;
-
+use aws_iam::io;
+use aws_iam::model::Policy;
+use std::error::Error;
+use std::fmt;
+use std::io::stdin;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -18,28 +20,101 @@ enum Command {
     /// Create a new default policy document
     New {
         /// Output file, stdout if not present
-        #[structopt(parse(from_os_str))]
-        output: Option<PathBuf>,
-
-        /// Where to write the output: to `stdout` or `file`
-        #[structopt(short)]
-        out_type: String,
-
-        /// File name: only required when `out` is set to `file`
-        #[structopt(name = "FILE", required_if("out_type", "file"))]
-        file_name: String,
+        #[structopt(name = "FILE", parse(from_os_str))]
+        file_name: Option<PathBuf>,
     },
     /// Verify an existing policy document
     Verify {
-        /// Input file
-        #[structopt(parse(from_os_str))]
-        input: PathBuf,
+        /// Input file, stdin if not present
+        #[structopt(name = "FILE", parse(from_os_str))]
+        file_name: Option<PathBuf>,
     },
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    info!("starting...");
-    let args = Cli::from_args();
-    println!("{:#?}", args);
+#[derive(Debug)]
+enum ToolError {
+    CannotOpenForRead(String),
+    CannotOpenForWrite(String),
+    VerifyFailed,
+}
+
+fn main() -> Result<(), ToolError> {
+    println!("starting...");
+    match Cli::from_args().cmd {
+        Command::New { file_name } => create_new_file(file_name),
+        Command::Verify { file_name } => verify_file(file_name),
+    }
+}
+
+fn create_new_file(file_name: Option<PathBuf>) -> Result<(), ToolError> {
     Ok(())
+}
+
+fn verify_file(file_name: Option<PathBuf>) -> Result<(), ToolError> {
+    println!("verify_file(file_name: {:?})", file_name);
+    match file_name {
+        Some(file_name) => {
+            if file_name.exists() && file_name.is_file() {
+                println!("|- verify_file reading file");
+                verify_file_result(io::read_from_file(&file_name))
+            } else {
+                println!("'- verify_file could not read from file");
+                Err(ToolError::CannotOpenForRead(
+                    file_name
+                        .to_str()
+                        .unwrap_or("{error in file name}")
+                        .to_string(),
+                ))
+            }
+        }
+        None => {
+            println!("|- verify_file reading from stdin");
+            verify_file_result(io::read_from_reader(stdin()))
+        }
+    }
+}
+
+fn verify_file_result(result: Result<Policy, io::Error>) -> Result<(), ToolError> {
+    match result {
+        Ok(policy) => {
+            println!("'- verify_file parsed successfully");
+            println!("{:#?}", policy);
+            Ok(())
+        }
+        Err(e) => {
+            match e {
+                io::Error::DeserializingJson(s) => {
+                    println!("'- verify_file failed to parse, error: {:?}", s);
+                }
+                io::Error::ReadingFile(e) => {
+                    println!(
+                        "'- verify_file failed to read, error: {:?}, cause: {}",
+                        e,
+                        match e.source() {
+                            Some(source) => source.to_string(),
+                            None => "unknown".to_string(),
+                        }
+                    );
+                }
+                err => {
+                    println!("'- verify_file failed with an unexpected error: {:?}", err);
+                }
+            }
+            Err(ToolError::VerifyFailed)
+        }
+    }
+}
+
+impl fmt::Display for ToolError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            ToolError::CannotOpenForRead(file_name) => {
+                write!(f, "Error reading from file: {}", file_name)
+            }
+            ToolError::CannotOpenForWrite(file_name) => {
+                write!(f, "Error writing to file: {}", file_name)
+            }
+            ToolError::VerifyFailed => write!(f, "Verification of policy failed"),
+        }
+    }
 }
