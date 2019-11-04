@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TutorialAssumeRole",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": "arn:aws:iam::123456789012:role/access-*",
+      "Condition": {
+        "StringEquals": {
+          "iam:ResourceTag/access-project": "${aws:PrincipalTag/access-project}",
+          "iam:ResourceTag/access-team": "${aws:PrincipalTag/access-team}",
+          "iam:ResourceTag/cost-center": "${aws:PrincipalTag/cost-center}"
+        }
+      }
+    }
+  ]
+}

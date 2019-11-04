@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": {
+    "Sid": "AllowRemoveMfaOnlyIfRecentMfa",
+    "Effect": "Allow",
+    "Action": [
+      "iam:DeactivateMFADevice",
+      "iam:DeleteVirtualMFADevice"
+    ],
+    "Resource": "arn:aws:iam::*:user/${aws:username}",
+    "Condition": {
+      "NumericLessThanEquals": {"aws:MultiFactorAuthAge": "3600"}
+    }
+  }
+}

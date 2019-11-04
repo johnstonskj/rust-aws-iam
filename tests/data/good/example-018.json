@@ -1,0 +1,14 @@
+{
+  "Version": "2012-10-17",
+  "Statement": {
+    "Sid": "THISPOLICYDOESNOTWORK",
+    "Effect": "Allow",
+    "Action": "ec2:RunInstances",
+    "Resource": "*",
+    "Condition": {"StringLike": {"ec2:InstanceType": [
+      "t1.*",
+      "t2.*",
+      "m3.*"
+    ]}}
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TutorialAssumeSpecificRoles",
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": [
+        "arn:aws:iam::123456789012:role/access-peg-engineering",
+        "arn:aws:iam::123456789012:role/access-cen-engineering"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "Version": "2012-10-17",
+  "Statement": {
+    "Effect": "Allow",
+    "Action": "iam:*AccessKey*",
+    "Resource": "arn:aws:iam::ACCOUNT-ID-WITHOUT-HYPHENS:user/*",
+    "Condition": {"StringEquals": {"aws:UserAgent": "Example Corp Java Client"}}
+  }
+}

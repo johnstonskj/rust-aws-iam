@@ -1,0 +1,32 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowS3ListRead",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListAllMyBuckets",
+        "s3:HeadBucket"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowS3Self",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::carlossalazar/*",
+        "arn:aws:s3:::carlossalazar"
+      ]
+    },
+    {
+      "Sid": "DenyS3Logs",
+      "Effect": "Deny",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::*log*",
+        "arn:aws:s3:::*log*/*"
+      ]
+    }
+  ]
+}

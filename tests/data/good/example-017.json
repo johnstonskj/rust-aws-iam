@@ -1,0 +1,10 @@
+{
+  "Version": "2012-10-17",
+  "Statement": {
+    "Effect": "Allow",
+    "Principal": {"AWS": "123456789012"},
+    "Action": "SQS:SendMessage",
+    "Resource": "arn:aws:sqs:REGION:123456789012:QUEUE-ID",
+    "Condition": {"ArnEquals": {"aws:SourceArn": "arn:aws:sns:REGION:123456789012:TOPIC-ID"}}
+  }
+}
