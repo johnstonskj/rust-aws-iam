@@ -7,9 +7,11 @@
         "Service": [
           "elasticmapreduce.amazonaws.com",
           "datapipeline.amazonaws.com"
-        ]
+        ],
+        "AWS": "*"
       },
-      "Action": "sts:AssumeRole"
+      "Action": "sts:AssumeRole",
+      "Resource": "arn:aws:sts:us-east-2:*:*"
     }
   ]
 }
