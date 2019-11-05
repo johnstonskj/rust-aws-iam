@@ -47,11 +47,11 @@ pub trait StatementVisitor {
 pub trait ConditionVisitor {
     fn start(&self, writer: &mut dyn Write) {}
 
-    fn left(&self, writer: &mut dyn Write, f: &QString) {}
+    fn left(&self, writer: &mut dyn Write, f: &QString, op: &ConditionOperator) {}
 
     fn operator(&self, writer: &mut dyn Write, op: &ConditionOperator) {}
 
-    fn right(&self, writer: &mut dyn Write, v: &OneOrAll<ConditionValue>) {}
+    fn right(&self, writer: &mut dyn Write, v: &OneOrAll<ConditionValue>, op: &ConditionOperator) {}
 
     fn finish(&self, writer: &mut dyn Write) {}
 }
@@ -114,9 +114,9 @@ fn walk_conditions(
     for (op, rhs) in conditions {
         for (field, values) in rhs {
             visitor.start(writer);
-            visitor.left(writer, field);
+            visitor.left(writer, field, op);
             visitor.operator(writer, op);
-            visitor.right(writer, values);
+            visitor.right(writer, values, op);
             visitor.finish(writer);
         }
     }

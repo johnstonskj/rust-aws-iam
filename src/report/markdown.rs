@@ -2,8 +2,16 @@ use crate::model::*;
 use crate::report::visitor::*;
 use std::io::Write;
 
+// ------------------------------------------------------------------------------------------------
+// Public Types
+// ------------------------------------------------------------------------------------------------
+
 #[derive(Debug)]
 pub struct MarkdownGenerator {}
+
+// ------------------------------------------------------------------------------------------------
+// Implementations
+// ------------------------------------------------------------------------------------------------
 
 const IO_ERROR_MSG: &str = "Unexpected write error";
 
@@ -139,13 +147,80 @@ impl StatementVisitor for MarkdownGenerator {
 }
 
 impl ConditionVisitor for MarkdownGenerator {
-    fn start(&self, writer: &mut dyn Write) {}
+    fn start(&self, writer: &mut dyn Write) {
+        write!(writer, "* `Condition ").expect(IO_ERROR_MSG);
+    }
 
-    fn left(&self, writer: &mut dyn Write, f: &QString) {}
+    fn left(&self, writer: &mut dyn Write, f: &QString, op: &ConditionOperator) {
+        write!(
+            writer,
+            "{}`_`{}`_`{}",
+            if op.only_if_exists {
+                "`**`IF EXISTS`**` "
+            } else {
+                ""
+            },
+            f.to_string(),
+            if op.only_if_exists {
+                format!(" `**`THEN`**\n   * _`{}`_`", f.to_string())
+            } else {
+                "".to_string()
+            },
+        )
+        .expect(IO_ERROR_MSG);
+    }
 
-    fn operator(&self, writer: &mut dyn Write, op: &ConditionOperator) {}
+    fn operator(&self, writer: &mut dyn Write, op: &ConditionOperator) {
+        write!(
+            writer,
+            " `**`{:?}`**`{} ",
+            op.operator,
+            match op.quantifier {
+                None => "",
+                Some(ConditionOperatorQuantifier::ForAllValues) => " `**`∀`**`",
+                Some(ConditionOperatorQuantifier::ForAnyValue) => " `**`∃`**`",
+            }
+        )
+        .expect(IO_ERROR_MSG);
+    }
 
-    fn right(&self, writer: &mut dyn Write, v: &OneOrAll<ConditionValue>) {}
+    fn right(&self, writer: &mut dyn Write, v: &OneOrAll<ConditionValue>, op: &ConditionOperator) {
+        write!(
+            writer,
+            "{}",
+            match v {
+                OneOrAll::One(v) => {
+                    if let ConditionValue::String(s) = v {
+                        format!("{:?}", s)
+                    } else {
+                        condition_value(v)
+                    }
+                }
+                OneOrAll::All(vs) => format!(
+                    "{:?}",
+                    vs.iter()
+                        .map(|v| condition_value(v))
+                        .collect::<Vec<String>>()
+                ),
+            }
+        )
+        .expect(IO_ERROR_MSG);
+    }
 
-    fn finish(&self, writer: &mut dyn Write) {}
+    fn finish(&self, writer: &mut dyn Write) {
+        writeln!(writer, "`").expect(IO_ERROR_MSG);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+// Private Functions
+// ------------------------------------------------------------------------------------------------
+
+fn condition_value(v: &ConditionValue) -> String {
+    match v {
+        ConditionValue::String(v) => v.to_string(),
+        ConditionValue::Integer(v) => v.to_string(),
+        ConditionValue::Float(v) => v.to_string(),
+        ConditionValue::Bool(v) => v.to_string(),
+    }
 }
