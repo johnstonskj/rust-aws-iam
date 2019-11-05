@@ -1,3 +1,7 @@
+/*!
+Provides a namespace-qualified string.
+*/
+
 use regex::Regex;
 use serde::export::fmt::Error;
 use serde::export::Formatter;

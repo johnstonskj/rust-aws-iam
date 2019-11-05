@@ -1,3 +1,7 @@
+/*!
+Provides bare bones support for ARN values.
+*/
+
 use regex::Regex;
 use serde::export::fmt::Error;
 use serde::export::Formatter;

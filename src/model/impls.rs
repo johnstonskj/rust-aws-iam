@@ -1,3 +1,7 @@
+/*!
+Provides implementations for the types in `crate::model::types`.
+*/
+
 use crate::model::containers::OneOrAll;
 use crate::model::qstring::QString;
 use crate::model::types::*;

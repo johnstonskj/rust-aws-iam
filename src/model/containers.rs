@@ -1,3 +1,7 @@
+/*!
+Provides some basic container enums.
+*/
+
 use serde::{Deserialize, Serialize};
 
 // ------------------------------------------------------------------------------------------------
