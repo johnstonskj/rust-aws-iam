@@ -108,9 +108,12 @@ pub struct Statement {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sid: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(flatten)]
     pub principal: Option<Principal>,
     pub effect: Effect,
+    #[serde(flatten)]
     pub action: Action,
+    #[serde(flatten)]
     pub resource: Resource,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub condition: Option<HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>>>,
@@ -144,7 +147,6 @@ pub enum Effect {
 /// and [IAM JSON Policy Elements: NotAction](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notaction.html).
 ///
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
 pub enum Action {
     /// Asserts that the action in the request **must** match one of the specified ones.
     Action(OneOrAny<QString>),
@@ -163,7 +165,6 @@ pub enum Action {
 /// and [AWS JSON Policy Elements: NotPrincipal](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notprincipal.html).
 ///
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
 pub enum Principal {
     /// Asserts that the principal in the request **must** match one of the specified ones.
     Principal(HashMap<PrincipalType, OneOrAny>),
@@ -210,7 +211,6 @@ pub enum PrincipalType {
 /// and [IAM JSON Policy Elements: NotResource](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_notresource.html).
 ///
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
 pub enum Resource {
     /// Asserts that the resource in the request **must** match one of the specified ones.
     Resource(OneOrAny),

@@ -184,7 +184,7 @@ impl ConditionVisitor for MarkdownGenerator {
         .expect(IO_ERROR_MSG);
     }
 
-    fn right(&self, writer: &mut dyn Write, v: &OneOrAll<ConditionValue>, op: &ConditionOperator) {
+    fn right(&self, writer: &mut dyn Write, v: &OneOrAll<ConditionValue>, _op: &ConditionOperator) {
         write!(
             writer,
             "{}",
