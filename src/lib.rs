@@ -16,7 +16,11 @@ From [AWS Identity and Access Management Documentation](https://docs.aws.amazon.
 
 # Overview
 
-TBD
+This crate provides a set of types that can be used to serialize and deserialize IAM Policy
+documents. For a simpler experience creating documents a [`builder`](model/builder/index.html)
+module provides a more _fluent_ method for construction. For understanding policies the
+[`report`](report/index.html) module provides a set of visitor traits that can be used with the
+[`walk_policy`](report/fn.walk_policy.html) function to walk a parsed policy value.
 
 # Usage
 
@@ -45,7 +49,7 @@ Policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html#
 }
 ```
 
-This can be constructed with the following model.
+This can be constructed with the following code.
 
 ```rust
 use std::collections::HashMap;
@@ -53,14 +57,9 @@ use aws_iam::model::*;
 use aws_iam::model::builder::*;
 use std::str::FromStr;
 
-let mut condition: HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>> =
-    HashMap::new();
-condition_one(
-    &mut condition,
-    ConditionOperator::new(GlobalConditionOperator::Bool),
-    "aws:MultiFactorAuthPresent".parse().unwrap(),
-    "true".to_string(),
-);
+let condition = ConditionBuilder::new(GlobalConditionOperator::Bool)
+    .right_hand_str("aws:MultiFactorAuthPresent", "true")
+    .build_as_condition();
 let policy = Policy {
     version: Some(Version::V2012),
     id: Some("test_access_policy_with_condition".to_string()),
@@ -68,14 +67,14 @@ let policy = Policy {
         sid: Some("ThirdStatement".to_string()),
         principal: None,
         effect: Effect::Allow,
-        action: Action::Action(OneOrAny::AnyOf(vec![
+        action: Action::these(&mut vec![
             "s3:List*".parse().unwrap(),
             "s3:Get*".parse().unwrap(),
-        ])),
-        resource: Resource::Resource(any_of(vec![
-            "arn:aws:s3:::confidential-data",
-            "arn:aws:s3:::confidential-data/ *",
-        ])),
+        ]),
+        resource: Resource::these(&mut vec![
+            "arn:aws:s3:::confidential-data".to_string(),
+            "arn:aws:s3:::confidential-data/-*".to_string(),
+        ]),
         condition: Some(condition),
     }]),
 };
@@ -90,7 +89,7 @@ println!("{}", policy.to_string());
 
 #![warn(
     missing_debug_implementations,
-//    missing_docs,
+    missing_docs,
     unused_extern_crates,
     rust_2018_idioms
 )]

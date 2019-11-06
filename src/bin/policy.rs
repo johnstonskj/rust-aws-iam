@@ -1,3 +1,6 @@
+/*!
+Command-line tool to read and verify policy files and create new from templates.
+*/
 #[macro_use]
 extern crate log;
 
@@ -21,6 +24,7 @@ use structopt::StructOpt;
 #[derive(Debug, StructOpt)]
 #[structopt(name = "policy")]
 struct Cli {
+    /// The level of logging to perform, from off to trace
     #[structopt(long, short = "v", parse(from_occurrences))]
     verbose: i8,
     #[structopt(subcommand)]

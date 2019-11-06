@@ -6,6 +6,8 @@ Provides a convenient and fluent builder interface for constructing policies.
 ```rust
 use aws_iam::model::*;
 use aws_iam::model::builder::*;
+use aws_iam::io::write_to_writer;
+use std::io::stdout;
 
 let policy: Policy = PolicyBuilder::new()
     .named("confidential-data-access")
@@ -26,9 +28,8 @@ let policy: Policy = PolicyBuilder::new()
             ),
     )
     .into();
-println!("{}", policy);
+write_to_writer(stdout(), &policy);
 ```
-
 */
 
 use crate::model::*;
@@ -38,6 +39,9 @@ use std::collections::HashMap;
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
+///
+/// The top-level `Policy` builder.
+///
 #[derive(Debug)]
 pub struct PolicyBuilder {
     version: Option<Version>,
@@ -45,6 +49,9 @@ pub struct PolicyBuilder {
     statements: Vec<Statement>,
 }
 
+///
+/// A `Statement` builder, used with `PolicyBuilder::evaluate_statement()`.
+///
 #[derive(Debug, Clone)]
 pub struct StatementBuilder {
     sid: Option<String>,
@@ -58,6 +65,8 @@ pub struct StatementBuilder {
     condition: Option<HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>>>,
 }
 
+///
+/// A `Condition` builder, used with `StatementBuilder::if_condition()`.
 #[derive(Debug)]
 pub struct ConditionBuilder {
     operator: ConditionOperator,
@@ -79,35 +88,42 @@ impl Default for PolicyBuilder {
 }
 
 impl PolicyBuilder {
+    /// Create a new, empty, policy builder
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// Set the version of this policy.
     pub fn version(&mut self, version: Version) -> &mut Self {
         self.version = Some(version);
         self
     }
 
+    /// Use the IAM default for the version of this policy
     pub fn default_version(&mut self) -> &mut Self {
         self.version = Some(Policy::default_version());
         self
     }
 
+    /// Set the id of this policy
     pub fn named(&mut self, id: &str) -> &mut Self {
         self.id = Some(id.to_string());
         self
     }
 
+    /// Set the id of this policy to a randomly generate value.
     pub fn auto_named(&mut self) -> &mut Self {
         self.id = Some(Policy::new_id());
         self
     }
 
+    /// Add a statement to this policy.
     pub fn evaluate_statement(&mut self, statement: &mut StatementBuilder) -> &mut Self {
         self.statements.push(statement.into());
         self
     }
 
+    /// Add a list of statements to this policy.
     pub fn evaluate_statements(&mut self, statements: &mut Vec<StatementBuilder>) -> &mut Self {
         self.statements.extend(
             statements
@@ -149,45 +165,55 @@ impl Default for StatementBuilder {
     }
 }
 impl StatementBuilder {
+    /// Create a new, empty, statement builder
     pub fn new() -> Self {
         Default::default()
     }
 
+    /// Set the id of this statement
     pub fn named(&mut self, sid: &str) -> &mut Self {
         self.sid = Some(sid.to_string());
         self
     }
 
+    /// Set the id of this statement to a randomly generate value.
     pub fn auto_named(&mut self) -> &mut Self {
         self.sid = Some(Statement::new_sid());
         self
     }
 
+    /// Set the effect of this statement to `Allow`.
     pub fn allows(&mut self) -> &mut Self {
         self.effect = Effect::Allow;
         self
     }
 
+    /// Set the effect of this statement to `Deny`.
     pub fn does_not_allow(&mut self) -> &mut Self {
         self.effect = Effect::Deny;
         self
     }
 
+    /// Unsets the principal associated with this statement
     pub fn unspecified_principals(&mut self) -> &mut Self {
+        self.principals.clear();
         self
     }
 
+    /// Sets the principal of this statement to be a wildcard.
     pub fn any_principal(&mut self, p_type: PrincipalType) -> &mut Self {
         self.p_direction = Some(true);
         self.principals.insert(p_type, Vec::new());
         self
     }
 
+    /// Sets the principal of this statement to be only this value.
     pub fn only_this_principal(&mut self, p_type: PrincipalType, arn: &str) -> &mut Self {
         self.only_these_principals(p_type, vec![arn]);
         self
     }
 
+    /// Sets the principal of this statement to be any of these values.
     pub fn only_these_principals(&mut self, p_type: PrincipalType, arns: Vec<&str>) -> &mut Self {
         match self.p_direction {
             None => self.p_direction = Some(true),
@@ -199,11 +225,13 @@ impl StatementBuilder {
         self
     }
 
+    /// Sets the principal of this statement to exclude this value.
     pub fn not_this_principal(&mut self, p_type: PrincipalType, arn: &str) -> &mut Self {
         self.not_these_principals(p_type, vec![arn]);
         self
     }
 
+    /// Sets the principal of this statement to exclude of these values.
     pub fn not_these_principals(&mut self, p_type: PrincipalType, arns: Vec<&str>) -> &mut Self {
         match self.p_direction {
             None => self.p_direction = Some(false),
@@ -215,17 +243,20 @@ impl StatementBuilder {
         self
     }
 
+    /// Sets the action of this statement to be a wildcard.
     pub fn may_perform_any_action(&mut self) -> &mut Self {
         self.a_direction = Some(true);
         self.actions = Vec::new();
         self
     }
 
+    /// Sets the action of this statement to be only this value.
     pub fn may_perform_action(&mut self, action: &str) -> &mut Self {
         self.may_perform_actions(vec![action]);
         self
     }
 
+    /// Sets the action of this statement to be any of these values.
     pub fn may_perform_actions(&mut self, actions: Vec<&str>) -> &mut Self {
         match self.a_direction {
             None => self.a_direction = Some(true),
@@ -241,17 +272,20 @@ impl StatementBuilder {
         self
     }
 
+    /// Sets the action of this statement to exclude the wildcard.
     pub fn may_perform_no_action(&mut self) -> &mut Self {
         self.a_direction = Some(false);
         self.actions = Vec::new();
         self
     }
 
+    /// Sets the action of this statement to exclude this value.
     pub fn may_not_perform_action(&mut self, action: &str) -> &mut Self {
         self.may_not_perform_actions(vec![action]);
         self
     }
 
+    /// Sets the action of this statement to exclude any of these values.
     pub fn may_not_perform_actions(&mut self, actions: Vec<&str>) -> &mut Self {
         match self.a_direction {
             None => self.a_direction = Some(false),
@@ -267,17 +301,20 @@ impl StatementBuilder {
         self
     }
 
+    /// Sets the resource of this statement to be a wildcard.
     pub fn on_any_resource(&mut self) -> &mut Self {
         self.r_direction = Some(true);
         self.resources = Vec::new();
         self
     }
 
+    /// Sets the resource of this statement to be only this value.
     pub fn on_resource(&mut self, resource: &str) -> &mut Self {
         self.on_resources(vec![resource]);
         self
     }
 
+    /// Sets the resource of this statement to be any of these values.
     pub fn on_resources(&mut self, resources: Vec<&str>) -> &mut Self {
         match self.r_direction {
             None => self.r_direction = Some(true),
@@ -293,17 +330,20 @@ impl StatementBuilder {
         self
     }
 
+    /// Sets the resource of this statement to exclude the wildcard.
     pub fn on_no_resource(&mut self) -> &mut Self {
         self.r_direction = Some(false);
         self.resources = Vec::new();
         self
     }
 
+    /// Sets the resource of this statement to exclude this value.
     pub fn not_on_resource(&mut self, resource: &str) -> &mut Self {
         self.not_on_resources(vec![resource]);
         self
     }
 
+    /// Sets the resource of this statement to exclude any of these values.
     pub fn not_on_resources(&mut self, resources: Vec<&str>) -> &mut Self {
         match self.r_direction {
             None => self.r_direction = Some(false),
@@ -319,8 +359,9 @@ impl StatementBuilder {
         self
     }
 
+    /// Adds this condition to the statement.
     pub fn if_condition(&mut self, condition: &mut ConditionBuilder) -> &mut Self {
-        if let None = self.condition {
+        if self.condition.is_none() {
             self.condition = Some(HashMap::new());
         }
         let conditions = self.condition.as_mut().unwrap();
@@ -391,6 +432,7 @@ impl From<&mut StatementBuilder> for Statement {
 }
 
 impl ConditionBuilder {
+    /// Create a new Condition with the provided operator.
     pub fn new(operator: GlobalConditionOperator) -> Self {
         ConditionBuilder {
             operator: ConditionOperator {
@@ -402,6 +444,7 @@ impl ConditionBuilder {
         }
     }
 
+    /// Create a new Condition with operator = `StringEquals`
     pub fn new_string_equals() -> Self {
         ConditionBuilder {
             operator: ConditionOperator {
@@ -413,6 +456,7 @@ impl ConditionBuilder {
         }
     }
 
+    /// Create a new Condition with operator = `StringNotEquals`
     pub fn new_string_not_equals() -> Self {
         ConditionBuilder {
             operator: ConditionOperator {
@@ -424,6 +468,7 @@ impl ConditionBuilder {
         }
     }
 
+    /// Create a new Condition with operator = `NumericEquals`
     pub fn new_numeric_equals() -> Self {
         ConditionBuilder {
             operator: ConditionOperator {
@@ -435,6 +480,7 @@ impl ConditionBuilder {
         }
     }
 
+    /// Create a new Condition with operator = `NumericNotEquals`
     pub fn new_numeric_not_equals() -> Self {
         ConditionBuilder {
             operator: ConditionOperator {
@@ -446,6 +492,7 @@ impl ConditionBuilder {
         }
     }
 
+    /// Create a new Condition with operator = `Bool`
     pub fn new_bool() -> Self {
         ConditionBuilder {
             operator: ConditionOperator {
@@ -457,16 +504,19 @@ impl ConditionBuilder {
         }
     }
 
+    /// Add the _for-all-values_ quantifier.
     pub fn for_all(&mut self) -> &mut Self {
         self.operator.quantifier = Some(ConditionOperatorQuantifier::ForAllValues);
         self
     }
 
+    /// Add the _for-any-value_ quantifier.
     pub fn for_any(&mut self) -> &mut Self {
         self.operator.quantifier = Some(ConditionOperatorQuantifier::ForAnyValue);
         self
     }
 
+    /// Add a list of values to the _right-hand-sidse_ of this condition.
     pub fn right_hand_side(&mut self, key: &str, values: &mut Vec<ConditionValue>) -> &mut Self {
         let values = match values.len() {
             0 => panic!("you must specify at least one value"),
@@ -477,6 +527,7 @@ impl ConditionBuilder {
         self
     }
 
+    /// Add a string value to the _right-hand-sidse_ of this condition.
     pub fn right_hand_str(&mut self, key: &str, value: &str) -> &mut Self {
         self.rhs.insert(
             key.parse().unwrap(),
@@ -485,6 +536,7 @@ impl ConditionBuilder {
         self
     }
 
+    /// Add a integer value to the _right-hand-sidse_ of this condition.
     pub fn right_hand_int(&mut self, key: &str, value: i64) -> &mut Self {
         self.rhs.insert(
             key.parse().unwrap(),
@@ -493,6 +545,7 @@ impl ConditionBuilder {
         self
     }
 
+    /// Add a float value to the _right-hand-sidse_ of this condition.
     pub fn right_hand_float(&mut self, key: &str, value: f64) -> &mut Self {
         self.rhs.insert(
             key.parse().unwrap(),
@@ -501,6 +554,7 @@ impl ConditionBuilder {
         self
     }
 
+    /// Add a boolean value to the _right-hand-sidse_ of this condition.
     pub fn right_hand_bool(&mut self, key: &str, value: bool) -> &mut Self {
         self.rhs.insert(
             key.parse().unwrap(),
@@ -509,37 +563,23 @@ impl ConditionBuilder {
         self
     }
 
+    /// Add the _if-exists_ constraint
     pub fn if_exists(&mut self) -> &mut Self {
         self.operator.only_if_exists = true;
         self
     }
-}
 
-// ------------------------------------------------------------------------------------------------
-// Public Functions
-// ------------------------------------------------------------------------------------------------
-
-pub fn this(v: &str) -> OneOrAny {
-    OneOrAny::One(v.to_string())
-}
-
-pub fn any_of(values: Vec<&str>) -> OneOrAny {
-    OneOrAny::AnyOf(values.iter().map(|s| s.to_string()).collect())
-}
-
-pub fn condition_one(
-    condition: &mut HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>>,
-    c_oper: ConditionOperator,
-    key: QString,
-    value: String,
-) -> &mut HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>> {
-    let entry: HashMap<QString, OneOrAll<ConditionValue>> =
-        vec![(key, OneOrAll::One(ConditionValue::String(value)))]
-            .iter()
-            .cloned()
-            .collect();
-    condition.insert(c_oper, entry);
-    condition
+    ///
+    /// Convert this one condition into a complete Condition for a statement.
+    ///
+    pub fn build_as_condition(
+        &self,
+    ) -> HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>> {
+        let mut map: HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>> =
+            HashMap::default();
+        map.insert(self.operator.clone(), self.rhs.clone());
+        map
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -549,6 +589,8 @@ pub fn condition_one(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::io::write_to_writer;
+    use std::io::stdout;
 
     #[test]
     fn test_simple_builder() {
@@ -571,6 +613,6 @@ mod tests {
                     ),
             )
             .into();
-        println!("{}", policy);
+        write_to_writer(stdout(), &policy).expect("well that was unexpected");
     }
 }

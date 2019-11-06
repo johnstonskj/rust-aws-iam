@@ -1,5 +1,5 @@
 /*!
-Provides some basic container enums.
+Provides some basic container enums that are used by the Policy model.
 */
 
 use serde::{Deserialize, Serialize};
@@ -48,6 +48,9 @@ impl<T> OneOrAny<T>
 where
     T: Clone,
 {
+    ///
+    /// Returns `true` if the option is an `Any` value.
+    ///
     pub fn is_any(&self) -> bool {
         match self {
             OneOrAny::Any => true,
@@ -55,6 +58,9 @@ where
         }
     }
 
+    ///
+    /// Returns `true` if the option is an `One` value.
+    ///
     pub fn is_one(&self) -> bool {
         match self {
             OneOrAny::One(_) => true,
@@ -62,6 +68,9 @@ where
         }
     }
 
+    ///
+    /// Returns `true` if the option is an `AnyOf` value.
+    ///
     pub fn is_any_of(&self) -> bool {
         match self {
             OneOrAny::AnyOf(_) => true,
@@ -69,14 +78,26 @@ where
         }
     }
 
-    pub fn one(&self) -> Option<T> {
+    ///
+    /// Converts from OneOrAny<T> to Option<T>.
+    ///
+    /// Converts `self` into an `Option<T>`, consuming `self`, and discarding either `Any` or
+    /// `AnyOf` values.
+    ///
+    pub fn one(self) -> Option<T> {
         match self {
-            OneOrAny::One(value) => Some(value.clone()),
+            OneOrAny::One(value) => Some(value),
             _ => None,
         }
     }
 
-    pub fn any_of(&self) -> Option<Vec<T>> {
+    ///
+    /// Converts from OneOrAny<T> to Option<T>.
+    ///
+    /// Converts `self` into an `Option<T>`, consuming `self`, and discarding either `Any` or
+    /// `One` values.
+    ///
+    pub fn any_of(self) -> Option<Vec<T>> {
         match self {
             OneOrAny::AnyOf(values) => Some(values.clone()),
             _ => None,

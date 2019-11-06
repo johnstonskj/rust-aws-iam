@@ -53,41 +53,59 @@ pub struct ARN {
     resource_id: String,
 }
 
+///
+/// The wildcard character.
+///
 pub const WILD: &str = "*";
 
-const ARN_PREFIX: &str = "arn";
-
-#[allow(dead_code)]
-const ARN_SEPARATOR: &str = ":";
-
-const DEFAULT_PARTITION: &str = "aws";
-
+///
+/// Errors that may arise parsing an ARN with `FromStr::from_str()`.
+///
 #[derive(Debug)]
 pub enum ArnError {
+    /// Missing the 'arn' prefix string.
     MissingPrefix,
+    /// Missing the partition component.
     MissingPartition,
+    /// The partition component provided is not valid.
     InvalidPartition,
+    /// Missing the service component.
     MissingService,
+    /// The service component provided is not valid.
     InvalidService,
-    ServiceNotRegistered,
+    /// Missing the region component.
     MissingRegion,
+    /// The partition region provided is not valid.
     InvalidRegion,
+    /// Missing the account id component.
     MissingAccountId,
+    /// The partition account id provided is not valid.
     InvalidAccountId,
+    /// Missing the resource component.
     MissingResource,
+    /// The partition resource provided is not valid.
     InvalidResource,
 }
 
-pub trait ServiceArn: Debug {
-    fn service_name(&self) -> String;
-
-    fn validate(&self, arn: &ARN) -> Result<(), ArnError>;
-}
-
-#[derive(Debug, Default)]
+///
+/// Used to store a set of service-specific validators. So a validator registered for the
+/// service "s3" could ensure that the resources section conforms to expected patterns.
+///
+#[derive(Default)]
+#[allow(missing_debug_implementations)]
 pub struct ArnValidators {
-    services: HashMap<String, Box<dyn ServiceArn>>,
+    services: HashMap<String, Box<dyn Fn(&ARN) -> Result<(), ArnError>>>,
 }
+
+// ------------------------------------------------------------------------------------------------
+// Implementations
+// ------------------------------------------------------------------------------------------------
+
+const ARN_PREFIX: &str = "arn";
+
+const ARN_SEPARATOR: &str = ":";
+
+const DEFAULT_PARTITION: &str = "aws";
 
 lazy_static! {
     static ref PARTITION: Regex = Regex::new(r"^aws(\-[a-zA-Z][a-zA-Z0-9\-]+)?$").unwrap();
@@ -95,6 +113,10 @@ lazy_static! {
 }
 
 impl ARN {
+    ///
+    /// Validate this ARN, if provided the `validators` struct will be used to also
+    /// provide any service-specific validation.
+    ///
     pub fn validate(&self, validators: Option<&ArnValidators>) -> Result<(), ArnError> {
         if let Some(partition) = &self.partition {
             if !PARTITION.is_match(&partition) {
@@ -106,7 +128,7 @@ impl ARN {
         }
         if let Some(validators) = validators {
             if let Some(validator) = validators.get(&self.service) {
-                return validator.validate(self);
+                return validator(self);
             }
         }
         Ok(())
@@ -117,29 +139,46 @@ impl Display for ARN {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         write!(
             f,
-            "{}:{}:{}:{}:{}:{}",
-            ARN_PREFIX.to_string(),
-            self.partition
-                .as_ref()
-                .unwrap_or(&DEFAULT_PARTITION.to_string()),
-            self.service,
-            self.region.as_ref().unwrap_or(&String::new()),
-            self.account_id.as_ref().unwrap_or(&String::new()),
-            self.resource_id
+            "{}",
+            vec![
+                ARN_PREFIX.to_string(),
+                self.partition
+                    .as_ref()
+                    .unwrap_or(&DEFAULT_PARTITION.to_string())
+                    .clone(),
+                self.service.clone(),
+                self.region.as_ref().unwrap_or(&String::new()).clone(),
+                self.account_id.as_ref().unwrap_or(&String::new()).clone(),
+                self.resource_id.clone()
+            ]
+            .join(ARN_SEPARATOR)
         )
     }
 }
 
 impl ArnValidators {
-    pub fn register(&mut self, svc: Box<dyn ServiceArn>) {
-        self.services.insert(svc.service_name(), svc);
+    ///
+    /// Register `validator` as the function to call for service `svc_name`.
+    ///
+    pub fn register(
+        &mut self,
+        svc_name: String,
+        validator: Box<dyn Fn(&ARN) -> Result<(), ArnError>>,
+    ) {
+        self.services.insert(svc_name, validator);
     }
 
-    pub fn deregister(&mut self, svc_name: &String) {
-        self.services.remove(svc_name);
+    ///
+    /// Deregister any validator function registered for service `svc_name`.
+    ///
+    pub fn deregister(&mut self, svc_name: String) {
+        self.services.remove(&svc_name);
     }
 
-    pub fn get(&self, svc_name: &String) -> Option<&Box<dyn ServiceArn>> {
+    ///
+    /// Return the validator function registered for service `svc_name`.
+    ///
+    pub fn get(&self, svc_name: &String) -> Option<&Box<dyn Fn(&ARN) -> Result<(), ArnError>>> {
         self.services.get(svc_name)
     }
 }

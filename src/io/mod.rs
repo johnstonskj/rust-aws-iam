@@ -1,5 +1,5 @@
 /*!
-Provides basic file read/writer or policies.
+Provides basic file read/write functions for policies.
 */
 use crate::model::Policy;
 use std::fs::OpenOptions;
@@ -33,7 +33,7 @@ pub enum Error {
 // ------------------------------------------------------------------------------------------------
 
 ///
-/// Read a `Policy` document from `path`.
+/// Read a `Policy` document from the file at `path`.
 ///
 pub fn read_from_file(path: &PathBuf) -> Result<Policy, Error> {
     match OpenOptions::new().read(true).open(path) {
@@ -57,7 +57,8 @@ where
 }
 
 ///
-/// Write `policy` object to `path`.
+/// Write the `policy` object to a file at `path`, this will create a file if it does
+/// not exist and overwrite any file if it exists.
 ///
 pub fn write_to_file(path: &PathBuf, policy: &Policy) -> Result<(), Error> {
     match OpenOptions::new()
@@ -71,6 +72,9 @@ pub fn write_to_file(path: &PathBuf, policy: &Policy) -> Result<(), Error> {
     }
 }
 
+///
+/// Write the `policy` object to any implementation of `std::io::Write`.
+///
 pub fn write_to_writer<W>(writer: W, policy: &Policy) -> Result<(), Error>
 where
     W: Write + Sized,

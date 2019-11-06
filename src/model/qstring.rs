@@ -24,6 +24,17 @@ pub struct QString {
     pub(crate) value: String,
 }
 
+///
+/// Errors that may arise when parsing using `FromStr::from_str()`.
+///
+#[derive(Clone, Debug)]
+pub enum QStringError {
+    /// One part of the qualified string is invalid.
+    ComponentInvalid,
+    /// Only one ':' is allowed.
+    TooManySeparators,
+}
+
 // ------------------------------------------------------------------------------------------------
 // Implementations
 // ------------------------------------------------------------------------------------------------
@@ -31,6 +42,9 @@ pub struct QString {
 const SEPARATOR: &str = ":";
 
 impl QString {
+    ///
+    /// Create a new qualified string with both `qualifier` and `value`.
+    ///
     pub fn new(qualifier: String, value: String) -> Self {
         match (validate_part(&qualifier), validate_part(&value)) {
             (Ok(_), Ok(_)) => QString {
@@ -41,6 +55,9 @@ impl QString {
         }
     }
 
+    ///
+    /// Create a new qualified string with only a `value`.
+    ///
     pub fn unqualified(value: String) -> Self {
         match validate_part(&value) {
             Ok(_) => QString {
@@ -51,10 +68,33 @@ impl QString {
         }
     }
 
+    ///
+    /// Construct an empty qualified string
+    ///
+    pub fn empty() -> Self {
+        QString {
+            qualifier: None,
+            value: "".to_string(),
+        }
+    }
+
+    ///
+    /// Determines if the `value` part of this qualified string is empty.
+    ///
+    pub fn is_empty(&self) -> bool {
+        self.value.is_empty()
+    }
+
+    ///
+    /// Return the `qualifier` part of this qualified string.
+    ///
     pub fn qualifier(&self) -> &Option<String> {
         &self.qualifier
     }
 
+    ///
+    /// Return the `value` part of this qualified string.
+    ///
     pub fn value(&self) -> &String {
         &self.value
     }
@@ -69,19 +109,12 @@ impl Display for QString {
     }
 }
 
-#[derive(Clone, Debug)]
-pub enum QStringError {
-    EmptyString,
-    ComponentInvalid,
-    TooManySeparators,
-}
-
 impl FromStr for QString {
     type Err = QStringError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
-            Err(QStringError::EmptyString)
+            Ok(QString::unqualified(s.to_string()))
         } else {
             let parts = s.split(SEPARATOR).collect::<Vec<&str>>();
             match parts.len() {
@@ -151,7 +184,9 @@ fn validate_part(part: &str) -> Result<String, QStringError> {
     lazy_static! {
         static ref ID: Regex = Regex::new(r"^(\*|[a-zA-Z\*][a-zA-Z0-9\-_\*/]*)$").unwrap();
     }
-    if ID.is_match(part) {
+    if part.is_empty() {
+        Ok(part.to_string())
+    } else if ID.is_match(part) {
         Ok(part.to_string())
     } else {
         Err(QStringError::ComponentInvalid)

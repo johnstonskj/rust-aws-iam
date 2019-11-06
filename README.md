@@ -11,12 +11,20 @@ Policy resources.
 
 ## Model
 
-TBD
+For the most part importing `aws_iam::model` provides the core types necessary to programmatically create
+Policy documents. You can also import `aws_iam::model::builder` to use a more _fluent_ interface to construct
+Policies. The `aws_iam::io` module provides simple read and write functions, the write functions producing
+_pretty printed_ JSON output.
+
+The `aws_iam::report` module provides a set of traits that allow for visiting a Policy model, and implementations
+of these that write formatted versions of a Policy as documentation.
 
 ### Example
 
 ```rust
 use aws_iam::model::*;
+use aws_iam::io::write_to_writer;
+use std::io::stdout;
 
 let policy: Policy = PolicyBuilder::new()
     .named("confidential-data-access")
@@ -37,7 +45,7 @@ let policy: Policy = PolicyBuilder::new()
             ),
     )
     .into();
-println!("{}", policy);
+write_to_writer(stdout(), &policy);
 ```
 
 Results in the following JSON.
@@ -67,13 +75,72 @@ Results in the following JSON.
 
 ## policy Command-Line Tool
 
-TBD
+The `policy` tool provides some very basic policy resource operations. The most valuable of these is `verify` which
+will read a file, parse it and produce a formatted output. This output can be a documentation form which is useful 
+for describing common policies. 
+
+```bash
+ $ policy -h
+policy 0.2.0
+
+USAGE:
+    policy [FLAGS] <SUBCOMMAND>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+    -v, --verbose    The level of logging to perform, from off to trace
+
+SUBCOMMANDS:
+    help      Prints this message or the help of the given subcommand(s)
+    new       Create a new default policy document
+    verify    Verify an existing policy document
+```
+
+For example, given the following JSON policy:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "DenyAllUsersNotUsingMFA",
+    "Effect": "Deny",
+    "NotAction": "iam:*",
+    "Resource": "*",
+    "Condition": {"BoolIfExists": {"aws:MultiFactorAuthPresent": "false"}}
+  }]
+}
+```
+
+the command `policy verify -f markdown` will produce the output between the following lines.
+
+-----
+# Policy
+
+> IAM Policy Version: 2012-10-17
+
+## Statement
+
+> Statement ID: DenyAllUsersNotUsingMFA
+
+**DENY** IF
+
+* `Action `**`NOT`**` = "iam:*"`
+* `Resource  = "*"`
+* `Condition `**`IF EXISTS`**` `_`aws:MultiFactorAuthPresent`_` `**`THEN`**
+   * _`aws:MultiFactorAuthPresent`_` `**`Bool`**` "false"`
+-----
 
 ## Changes
 
-**Version 0.1.0**
+**Version 0.2.1**
 
-* First commit to Crates.io
+* Fixing `missing_docs` warnings.
+* Removed `any_of()`, `condition_one()`, and `one()` from builder, replaced with functions on Action, Principal, and Resource.
+
+**Version 0.2.0**
+
+* First commit to Crates.io.
 * Completed markdown support for `policy` tool verification.
 * Completed changes to the model to support `NotAction`, `NotPrincipal`, and `NotResource`.
 * Filled obvious gaps in documentation.

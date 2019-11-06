@@ -6,6 +6,10 @@ use std::io::Write;
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
+///
+/// This types implements `PolicyVisitor`, `StatementVisitor`, and `ConditionVisitor` to
+/// produce Markdown formatted documentation for a Policy.
+///
 #[derive(Debug)]
 pub struct MarkdownGenerator {}
 

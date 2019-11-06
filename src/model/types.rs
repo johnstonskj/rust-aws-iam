@@ -107,14 +107,29 @@ pub struct Statement {
     ///
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sid: Option<String>,
+    ///
+    /// The principals, or not-principals to match as part of this statement.
+    ///
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(flatten)]
     pub principal: Option<Principal>,
+    ///
+    /// The effect, outcome, if this statement is matched.
+    ///
     pub effect: Effect,
+    ///
+    /// The actions, or not-actions to match as part of this statement.
+    ///
     #[serde(flatten)]
     pub action: Action,
+    ///
+    /// The resources, or not-resources to match as part of this statement.
+    ///
     #[serde(flatten)]
     pub resource: Resource,
+    ///
+    /// Any condition(s) attached to this statement.
+    ///
     #[serde(skip_serializing_if = "Option::is_none")]
     pub condition: Option<HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>>>,
 }
@@ -235,6 +250,11 @@ pub enum ConditionOperatorQuantifier {
     ForAnyValue,
 }
 
+///
+/// Pulls apart the string form of an operator used by IAM. It identifies the
+/// quantifiers which are used as string prefixes and recognizes the _if exist_
+/// suffix as well.
+///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConditionOperator {
     /// Used to test multiple keys or multiple values for a single key in a request.
@@ -279,16 +299,17 @@ pub enum GlobalConditionOperator {
     /// in the string.
     StringNotLike,
     // ----- Numeric Condition Operators
-    NumericEquals,
     /// Matching
-    NumericNotEquals,
+    NumericEquals,
     /// Negated matching
-    NumericLessThan,
+    NumericNotEquals,
     /// "Less than" matching
-    NumericLessThanEquals,
+    NumericLessThan,
     /// "Less than or equals" matching
-    NumericGreaterThan,
+    NumericLessThanEquals,
     /// "Greater than" matching
+    NumericGreaterThan,
+    /// "Greater than or equals" matching
     NumericGreaterThanEquals,
     // ----- Date Condition Operators
     /// Matching a specific date
