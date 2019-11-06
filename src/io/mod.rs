@@ -2,7 +2,7 @@
 Provides basic file read/writer or policies.
 */
 use crate::model::Policy;
-use std::fs::File;
+use std::fs::OpenOptions;
 use std::io;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
@@ -36,7 +36,7 @@ pub enum Error {
 /// Read a `Policy` document from `path`.
 ///
 pub fn read_from_file(path: &PathBuf) -> Result<Policy, Error> {
-    match File::open(path) {
+    match OpenOptions::new().read(true).open(path) {
         Ok(f) => read_from_reader(f),
         Err(e) => Err(Error::ReadingFile(e)),
     }
@@ -60,7 +60,12 @@ where
 /// Write `policy` object to `path`.
 ///
 pub fn write_to_file(path: &PathBuf, policy: &Policy) -> Result<(), Error> {
-    match File::open(path) {
+    match OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)
+    {
         Ok(f) => write_to_writer(f, policy),
         Err(e) => Err(Error::WritingFile(e)),
     }

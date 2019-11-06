@@ -6,6 +6,10 @@ use std::fs;
 use std::path::PathBuf;
 use test_generator::test_resources;
 
+//fn init() {
+//    let _ = env_logger::builder().is_test(true).try_init();
+//}
+
 #[test_resources("tests/data/good/*.json")]
 fn verify_good_examples(resource: &str) {
     println!("verify_good_examples reading file {}", resource);

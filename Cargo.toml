@@ -6,7 +6,7 @@ edition = "2018"
 description = "A Rust crate for dealing with the actual Policy files themselves"
 repository = "https://github.com/johnstonskj/aws-iam-model.git"
 readme = "README.md"
-#autobins = false
+default-run = "policy"
 
 [[bin]]
 name = "policy"
@@ -14,20 +14,19 @@ path = "src/bin/policy.rs"
 required-features = ["command-line"]
 
 [features]
-command-line = ["structopt", "clap-verbosity-flag", "clap-log-flag", "log"]
+command-line = ["structopt",  "env_logger"]
 
 [dependencies]
 uuid = { version = "0.8", features = ["serde", "v4"] }
 lazy_static = "1.4.0"
+log = { version = "0.4", features = ["std"] }
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Command-Line feature dependencies
 structopt = { optional = true, version = "0.3.3" }
-clap-verbosity-flag = { optional = true, version = "0.3.0" }
-clap-log-flag = { optional = true, version = "0.2.1" }
-log = { optional = true, version = "0.4", features = ["std"] }
+env_logger = { optional = true, version = "0.7.1" }
 
 [dev-dependencies]
 test-generator = "0.3.0"
