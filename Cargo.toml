@@ -3,9 +3,12 @@ name = "aws-iam"
 version = "0.2.0"
 authors = ["Simon Johnston <johnstonskj@gmail.com>"]
 edition = "2018"
-description = "A Rust crate for dealing with the actual Policy files themselves"
-repository = "https://github.com/johnstonskj/aws-iam-model.git"
+description = "A Rust crate for dealing with AWS IAM Policy resources"
+documentation = "https://docs.rs/aws-iam/"
+repository = "https://github.com/johnstonskj/rust-aws-iam.git"
+license = "MIT"
 readme = "README.md"
+publish = true
 default-run = "policy"
 
 [[bin]]
