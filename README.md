@@ -5,8 +5,8 @@ Policy resources.
 
 ![MIT License](https://img.shields.io/badge/license-mit-118811.svg)
 ![Minimum Rust Version](https://img.shields.io/badge/Min%20Rust-1.38-green.svg)
-[![crates.io](https://img.shields.io/crates/v/quixotic.svg)](https://crates.io/crates/aws-iam)
-[![docs.rs](https://docs.rs/quixotic/badge.svg)](https://docs.rs/aws-iam/)
+[![crates.io](https://img.shields.io/crates/v/aws-iam.svg)](https://crates.io/crates/aws-iam)
+[![docs.rs](https://docs.rs/aws-iam/badge.svg)](https://docs.rs/aws-iam)
 [![GitHub stars](https://img.shields.io/github/stars/johnstonskj/rust-aws-iam.svg)](https://github.com/johnstonskj/rust-aws-iam/stargazers)
 
 ## Model
