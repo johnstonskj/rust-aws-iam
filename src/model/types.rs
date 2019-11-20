@@ -140,7 +140,7 @@ pub struct Statement {
 ///
 /// From [IAM JSON Policy Elements: Effect](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_effect.html).
 ///
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Effect {
     /// The result of successful evaluation of this policy is to allow access.
     Allow,

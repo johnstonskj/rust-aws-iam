@@ -122,8 +122,6 @@ println!("JSON: {:#?}", json);
 // Modules
 // ------------------------------------------------------------------------------------------------
 
-pub mod arn;
-
 pub mod builder;
 
 pub mod containers;
