@@ -109,7 +109,7 @@ pub mod model;
 
 pub mod report;
 
-//#[cfg(feature = "offline_eval")]
+#[cfg(feature = "offline_eval")]
 pub mod offline;
 
 #[cfg(feature = "service_config")]

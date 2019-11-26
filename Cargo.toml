@@ -14,24 +14,24 @@ default-run = "policy"
 [[bin]]
 name = "policy"
 path = "src/bin/policy.rs"
-required-features = ["command-line"]
+required-features = ["command-line", "offline_eval"]
 
 [features]
-command_line = ["structopt",  "env_logger"]
-offline_eval = []
+command_line = ["structopt",  "tracing", "tracing-subscriber"]
+offline_eval = ["tracing"]
 service_config = ["toml"]
 
 [dependencies]
 uuid = { version = "0.8", features = ["serde", "v4"] }
 lazy_static = "1.4.0"
-log = { version = "0.4", features = ["std"] }
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # Command-Line feature dependencies
 structopt = { optional = true, version = "0.3.3" }
-env_logger = { optional = true, version = "0.7.1" }
+tracing = { optional = true, version = "0.1.10" }
+tracing-subscriber = { optional = true, version = "0.1.6" }
 
 # Service Config feature dependencies
 toml = { optional = true, version = "0.5" }

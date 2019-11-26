@@ -2,13 +2,12 @@
 Command-line tool to read and verify policy files and create new from templates.
 */
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 use aws_iam::io;
 use aws_iam::model::Policy;
 use aws_iam::report;
 use aws_iam::report::MarkdownGenerator;
-use log::LevelFilter;
 use std::error::Error;
 use std::fmt;
 use std::fs::OpenOptions;
@@ -16,6 +15,8 @@ use std::io::{stdin, stdout, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::StructOpt;
+use tracing::{span, Level};
+use tracing_subscriber::{EnvFilter, FmtSubscriber, LevelFilter};
 
 // ------------------------------------------------------------------------------------------------
 // Command-Line Parsing
@@ -121,19 +122,9 @@ enum ToolError {
 
 fn main() -> Result<(), ToolError> {
     let args = Cli::from_args();
-    let log_level = match args.verbose {
-        0 => LevelFilter::Off,
-        1 => LevelFilter::Error,
-        2 => LevelFilter::Warn,
-        3 => LevelFilter::Info,
-        4 => LevelFilter::Debug,
-        _ => LevelFilter::Trace,
-    };
-    env_logger::builder()
-        .filter_module(module_path!(), log_level)
-        .filter_module("aws_iam", log_level)
-        .init();
-    info!("Log level set to `LevelFilter::{:?}`", log_level);
+
+    init_tracing(args.verbose);
+
     match args.cmd {
         Command::New {
             file_name,
@@ -154,7 +145,28 @@ fn main() -> Result<(), ToolError> {
 // Private Functions
 // ------------------------------------------------------------------------------------------------
 
+fn init_tracing(verbosity: i8) {
+    let log_level = match verbosity {
+        0 => LevelFilter::Off,
+        1 => LevelFilter::Error,
+        2 => LevelFilter::Warn,
+        3 => LevelFilter::Info,
+        4 => LevelFilter::Debug,
+        _ => LevelFilter::Trace,
+    };
+
+    let default_directive = format!("{}={},aws_iam={}", module_path!(), log_level, log_level);
+    let filter = EnvFilter::from_default_env().add_directive(default_directive.parse()?);
+    let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("Unable to set global default tracing subscriber");
+    info!("Log level set to `LevelFilter::{:?}`", log_level);
+}
+
 fn list_templates() -> Result<(), ToolError> {
+    let span = debug_span!("list_templates");
+    let _enter = span.enter();
     println!("templates: {:?}", templates::all_templates().keys());
     Ok(())
 }
@@ -164,23 +176,16 @@ fn create_new_file(
     template: &String,
     force_write: bool,
 ) -> Result<(), ToolError> {
-    info!(
-        "create_new_file(file_name: {:?}, template: {}, force_write: {})",
-        file_name, template, force_write
-    );
+    let span = debug_span!("create_new_file", ?file_name, ?template, ?force_write);
+    let _enter = span.enter();
     if !templates::all_templates().contains_key(template) {
-        debug!(
-            "'- create_new_file, '{}' is not a valid template name",
-            template
-        );
+        error!("'{}' is not a valid template name", template);
         return Err(ToolError::InvalidTemplateName(template.clone()));
     }
     match file_name {
         Some(file_name) => {
             if file_name.exists() && file_name.is_file() && !force_write {
-                debug!(
-                    "'- create_new_file could not open file for write, not a file, or missing -f"
-                );
+                error!("could not open file for write, not a file, or missing -f");
                 Err(ToolError::CannotOpenForWrite(
                     file_name
                         .to_str()
@@ -188,7 +193,7 @@ fn create_new_file(
                         .to_string(),
                 ))
             } else {
-                debug!("|- create_new_file opening output file");
+                debug!("opening output file");
                 match OpenOptions::new()
                     .write(true)
                     .create_new(!force_write)
@@ -200,16 +205,13 @@ fn create_new_file(
                         match write!(f, "{}", templates::all_templates().get(template).unwrap()) {
                             Ok(()) => Ok(()),
                             Err(e) => {
-                                debug!("'- create_new_file write error: {:?}", e);
+                                error!("write error: {:?}", e);
                                 Err(ToolError::WriteToFile)
                             }
                         }
                     }
                     Err(e) => {
-                        debug!(
-                            "'- create_new_file could not open file for write, error {:?}",
-                            e
-                        );
+                        error!("could not open file for write, error {:?}", e);
                         Err(ToolError::CannotOpenForWrite(
                             file_name
                                 .to_str()
@@ -221,7 +223,7 @@ fn create_new_file(
             }
         }
         None => {
-            debug!("'- create_new_file writing to stdout");
+            debug!("writing to stdout");
             println!("{}", templates::all_templates().get(template).unwrap());
             Ok(())
         }
@@ -229,14 +231,15 @@ fn create_new_file(
 }
 
 fn verify_file(file_name: Option<PathBuf>, format: Option<Format>) -> Result<(), ToolError> {
-    info!("verify_file(file_name: {:?})", file_name);
+    let span = debug_span!("verify_file", ?file_name, ?format);
+    let _enter = span.enter();
     match file_name {
         Some(file_name) => {
             if file_name.exists() && file_name.is_file() {
-                debug!("|- verify_file reading file");
+                debug!("reading file");
                 verify_file_result(io::read_from_file(&file_name), format)
             } else {
-                debug!("'- verify_file could not read from file");
+                error!("could not read from file");
                 Err(ToolError::CannotOpenForRead(
                     file_name
                         .to_str()
@@ -246,7 +249,7 @@ fn verify_file(file_name: Option<PathBuf>, format: Option<Format>) -> Result<(),
             }
         }
         None => {
-            debug!("|- verify_file reading from stdin");
+            debug!("reading from stdin");
             verify_file_result(io::read_from_reader(stdin()), format)
         }
     }
@@ -256,33 +259,34 @@ fn verify_file_result(
     result: Result<Policy, io::Error>,
     format: Option<Format>,
 ) -> Result<(), ToolError> {
+    let span = debug_span!("verify_file_result", ?file_name, ?format);
+    let _enter = span.enter();
     match result {
         Ok(policy) => {
             match format {
                 Some(format) => {
-                    debug!("|- verify_file parsed successfully");
-                    debug!("'- result in {:?} format:", format);
+                    debug!("file parsed successfully");
                     match format {
                         Format::Rust => println!("{:#?}", policy),
                         Format::Markdown => {
                             let generator = MarkdownGenerator::default();
                             report::walk_policy(&policy, &generator, &mut stdout());
                         }
-                        _ => debug!("darn"),
+                        _ => warn!("unsupported format"),
                     }
                 }
-                None => debug!("'- verify_file parsed successfully"),
+                None => debug!("parsed successfully"),
             }
             Ok(())
         }
         Err(e) => {
             match e {
                 io::Error::DeserializingJson(s) => {
-                    debug!("'- verify_file failed to parse, error: {:?}", s);
+                    error!("failed to parse, error: {:?}", s);
                 }
                 io::Error::ReadingFile(e) => {
-                    debug!(
-                        "'- verify_file failed to read, error: {:?}, cause: {}",
+                    error!(
+                        "failed to read, error: {:?}, cause: {}",
                         e,
                         match e.source() {
                             Some(source) => source.to_string(),
@@ -291,7 +295,7 @@ fn verify_file_result(
                     );
                 }
                 err => {
-                    debug!("'- verify_file failed with an unexpected error: {:?}", err);
+                    error!("failed with an unexpected error: {:?}", err);
                 }
             }
             Err(ToolError::VerifyFailed)

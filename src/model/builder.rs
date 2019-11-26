@@ -438,7 +438,7 @@ impl ConditionBuilder {
             operator: ConditionOperator {
                 quantifier: None,
                 operator,
-                only_if_exists: false,
+                if_exists: false,
             },
             rhs: Default::default(),
         }
@@ -450,7 +450,7 @@ impl ConditionBuilder {
             operator: ConditionOperator {
                 quantifier: None,
                 operator: GlobalConditionOperator::StringEquals,
-                only_if_exists: false,
+                if_exists: false,
             },
             rhs: Default::default(),
         }
@@ -462,7 +462,7 @@ impl ConditionBuilder {
             operator: ConditionOperator {
                 quantifier: None,
                 operator: GlobalConditionOperator::StringNotEquals,
-                only_if_exists: false,
+                if_exists: false,
             },
             rhs: Default::default(),
         }
@@ -474,7 +474,7 @@ impl ConditionBuilder {
             operator: ConditionOperator {
                 quantifier: None,
                 operator: GlobalConditionOperator::NumericEquals,
-                only_if_exists: false,
+                if_exists: false,
             },
             rhs: Default::default(),
         }
@@ -486,7 +486,7 @@ impl ConditionBuilder {
             operator: ConditionOperator {
                 quantifier: None,
                 operator: GlobalConditionOperator::NumericNotEquals,
-                only_if_exists: false,
+                if_exists: false,
             },
             rhs: Default::default(),
         }
@@ -498,7 +498,7 @@ impl ConditionBuilder {
             operator: ConditionOperator {
                 quantifier: None,
                 operator: GlobalConditionOperator::Bool,
-                only_if_exists: false,
+                if_exists: false,
             },
             rhs: Default::default(),
         }
@@ -565,7 +565,7 @@ impl ConditionBuilder {
 
     /// Add the _if-exists_ constraint
     pub fn if_exists(&mut self) -> &mut Self {
-        self.operator.only_if_exists = true;
+        self.operator.if_exists = true;
         self
     }
 

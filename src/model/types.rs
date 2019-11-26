@@ -266,7 +266,7 @@ pub struct ConditionOperator {
     /// present, evaluate the condition element as true." Other condition elements
     /// in the statement can still result in a nonmatch, but not a missing key
     /// when checked with ...`IfExists`.
-    pub only_if_exists: bool,
+    pub if_exists: bool,
 }
 
 ///

@@ -247,7 +247,7 @@ impl ConditionOperator {
             base @ _ => ConditionOperator {
                 quantifier: None,
                 operator: base,
-                only_if_exists: false,
+                if_exists: false,
             },
         }
     }
@@ -259,7 +259,7 @@ impl ConditionOperator {
         ConditionOperator {
             quantifier: None,
             operator: GlobalConditionOperator::Other(condition),
-            only_if_exists: false,
+            if_exists: false,
         }
     }
 
@@ -282,7 +282,7 @@ impl ConditionOperator {
     /// Set the value of the constraint to `true`.
     pub fn if_exists(self) -> Self {
         ConditionOperator {
-            only_if_exists: true,
+            if_exists: true,
             ..self
         }
     }
@@ -298,7 +298,7 @@ impl Display for ConditionOperator {
                 None => "".to_string(),
             },
             self.operator,
-            if self.only_if_exists { "IfExists" } else { "" }
+            if self.if_exists { "IfExists" } else { "" }
         )
     }
 }
@@ -373,7 +373,7 @@ impl FromStr for ConditionOperator {
         Ok(ConditionOperator {
             quantifier,
             operator,
-            only_if_exists,
+            if_exists: only_if_exists,
         })
     }
 }
@@ -485,7 +485,7 @@ mod test {
             Some(ConditionOperatorQuantifier::ForAllValues)
         );
         assert_eq!(c_type.operator, GlobalConditionOperator::Null);
-        assert_eq!(c_type.only_if_exists, true);
+        assert_eq!(c_type.if_exists, true);
     }
 
     #[test]

@@ -159,13 +159,13 @@ impl ConditionVisitor for MarkdownGenerator {
         write!(
             writer,
             "{}`_`{}`_`{}",
-            if op.only_if_exists {
+            if op.if_exists {
                 "`**`IF EXISTS`**` "
             } else {
                 ""
             },
             f.to_string(),
-            if op.only_if_exists {
+            if op.if_exists {
                 format!(" `**`THEN`**\n   * _`{}`_`", f.to_string())
             } else {
                 "".to_string()

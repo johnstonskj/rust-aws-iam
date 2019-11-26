@@ -1,88 +1,98 @@
 use crate::model::{ConditionValue, GlobalConditionOperator, QString};
-use crate::offline::trace::Tracer;
-use crate::offline::{Context, EvaluationError};
+use crate::offline::variables::expand_string;
+use crate::offline::EvaluationError;
 use serde::export::fmt::Error;
 use serde::export::Formatter;
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::string::ToString;
+use tracing::{error, instrument};
 
 // ------------------------------------------------------------------------------------------------
 // Public Functions
 // ------------------------------------------------------------------------------------------------
 
+#[instrument]
 pub fn evaluate_all(
-    context: &Context,
+    environment: &HashMap<QString, ConditionValue>,
     operator: &GlobalConditionOperator,
-    lhs: &QString,
-    rhs: &Vec<ConditionValue>,
-    tracer: &mut Tracer,
+    lhs: &ConditionValue,
+    rhs: &[ConditionValue],
 ) -> Result<bool, EvaluationError> {
     Ok(rhs
         .iter()
-        .all(|r| match evaluate(context, operator, lhs, r, tracer) {
+        .all(|r| match evaluate(environment, operator, lhs, r) {
             Ok(v) => v,
             Err(err) => {
-                tracer.message(&format!("|   |   |   '-- evaluation error {:?}", err));
+                error!("Evaluation error {:?}", err);
                 false
             }
         }))
 }
 
+#[instrument]
 pub fn evaluate_any(
-    context: &Context,
+    environment: &HashMap<QString, ConditionValue>,
     operator: &GlobalConditionOperator,
-    lhs: &QString,
-    rhs: &Vec<ConditionValue>,
-    tracer: &mut Tracer,
+    lhs: &ConditionValue,
+    rhs: &[ConditionValue],
 ) -> Result<bool, EvaluationError> {
     Ok(rhs
         .iter()
-        .any(|r| match evaluate(context, operator, lhs, r, tracer) {
+        .any(|r| match evaluate(environment, operator, lhs, r) {
             Ok(v) => v,
             Err(err) => {
-                tracer.message(&format!("|   |   |   '-- evaluation error {:?}", err));
+                error!("Evaluation error {:?}", err);
                 false
             }
         }))
 }
 
+#[instrument]
 pub fn evaluate(
-    context: &Context,
+    environment: &HashMap<QString, ConditionValue>,
     operator: &GlobalConditionOperator,
-    lhs: &QString,
+    lhs: &ConditionValue,
     rhs: &ConditionValue,
-    tracer: &mut Tracer,
 ) -> Result<bool, EvaluationError> {
     match operator {
-        GlobalConditionOperator::StringEquals => {
-            call_operator(context, string_equals, lhs, rhs, &ExpectedValueType::String)
-        }
+        GlobalConditionOperator::StringEquals => call_operator(
+            environment,
+            string_equals,
+            lhs,
+            rhs,
+            &ExpectedValueType::String,
+        ),
         GlobalConditionOperator::StringNotEquals => call_operator(
-            context,
+            environment,
             string_not_equals,
             lhs,
             rhs,
             &ExpectedValueType::String,
         ),
         GlobalConditionOperator::StringEqualsIgnoreCase => call_operator(
-            context,
+            environment,
             string_equals_ignore_case,
             lhs,
             rhs,
             &ExpectedValueType::String,
         ),
         GlobalConditionOperator::StringNotEqualsIgnoreCase => call_operator(
-            context,
+            environment,
             string_not_equals_ignore_case,
             lhs,
             rhs,
             &ExpectedValueType::String,
         ),
-        GlobalConditionOperator::StringLike => {
-            call_operator(context, string_like, lhs, rhs, &ExpectedValueType::String)
-        }
+        GlobalConditionOperator::StringLike => call_operator(
+            environment,
+            string_like,
+            lhs,
+            rhs,
+            &ExpectedValueType::String,
+        ),
         GlobalConditionOperator::StringNotLike => call_operator(
-            context,
+            environment,
             string_not_like,
             lhs,
             rhs,
@@ -160,13 +170,12 @@ impl Display for ExpectedValueType {
 }
 
 fn call_operator(
-    context: &Context,
+    environment: &HashMap<QString, ConditionValue>,
     operator: impl Fn(&ConditionValue, &ConditionValue) -> Result<bool, EvaluationError>,
-    lhs: &QString,
+    lhs: &ConditionValue,
     rhs: &ConditionValue,
     value_type: &ExpectedValueType,
 ) -> Result<bool, EvaluationError> {
-    let lhs = lhs_value(context, lhs)?;
     let lhs = match (value_type, lhs) {
         (ExpectedValueType::String, ConditionValue::String(_))
         | (ExpectedValueType::Integer, ConditionValue::Integer(_))
@@ -175,27 +184,28 @@ fn call_operator(
         (ev, _) => return Err(EvaluationError::ExpectingVariableType(ev.to_string())),
     };
     let rhs = match (value_type, rhs) {
-        (ExpectedValueType::String, ConditionValue::String(_)) => expand_rhs_value(context, rhs)?,
+        (ExpectedValueType::String, ConditionValue::String(_)) => {
+            expand_rhs_value(environment, rhs.clone())?
+        }
         (ExpectedValueType::Integer, ConditionValue::Integer(_))
         | (ExpectedValueType::Float, ConditionValue::Float(_))
-        | (ExpectedValueType::Bool, ConditionValue::Bool(_)) => rhs,
+        | (ExpectedValueType::Bool, ConditionValue::Bool(_)) => rhs.clone(),
         (ev, _) => return Err(EvaluationError::ExpectingVariableType(ev.to_string())),
     };
-    operator(lhs, rhs)
+    operator(lhs, &rhs)
 }
 
-fn lhs_value<'a>(
-    context: &'a Context,
-    lhs_name: &QString,
-) -> Result<&'a ConditionValue, EvaluationError> {
-    Err(EvaluationError::InvalidVariableName(lhs_name.to_string()))
-}
-
-fn expand_rhs_value<'a>(
-    context: &'a Context,
-    rhs: &ConditionValue,
-) -> Result<&'a ConditionValue, EvaluationError> {
-    Err(EvaluationError::InvalidVariableName("".to_string()))
+fn expand_rhs_value(
+    environment: &HashMap<QString, ConditionValue>,
+    rhs: ConditionValue,
+) -> Result<ConditionValue, EvaluationError> {
+    match rhs {
+        ConditionValue::String(input) => {
+            let output = expand_string(environment, &input)?;
+            Ok(ConditionValue::String(output))
+        }
+        _ => Ok(rhs),
+    }
 }
 
 fn string_equals(lhs: &ConditionValue, rhs: &ConditionValue) -> Result<bool, EvaluationError> {
