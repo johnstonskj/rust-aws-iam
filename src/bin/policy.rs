@@ -159,7 +159,7 @@ fn init_tracing(verbosity: i8) {
         .add_directive(
             format!("{}={}", module_path!(), log_level)
                 .parse()
-                .expect("Issue with comamnd-line trace directive"),
+                .expect("Issue with command-line trace directive"),
         )
         .add_directive(
             format!("aws_iam={}", log_level)

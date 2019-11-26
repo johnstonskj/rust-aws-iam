@@ -21,7 +21,7 @@ TBD
 // ------------------------------------------------------------------------------------------------
 
 mod markdown;
-pub use markdown::*;
+pub use markdown::MarkdownGenerator;
 
 mod latex;
 pub use latex::*;

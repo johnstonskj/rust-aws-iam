@@ -10,6 +10,7 @@ use std::io::{stdout, Write};
 /// This types implements `PolicyVisitor`, `StatementVisitor`, and `ConditionVisitor` to
 /// produce Markdown formatted documentation for a Policy.
 ///
+#[allow(missing_debug_implementations)]
 pub struct MarkdownGenerator {
     writer: Box<dyn Write>,
 }
@@ -21,13 +22,21 @@ pub struct MarkdownGenerator {
 const IO_ERROR_MSG: &str = "Unexpected write error";
 
 impl MarkdownGenerator {
-    fn new<T>(writer: T) -> Self
+    ///
+    /// Create a new generator that will write formatted content to `writer`. If you wish
+    /// to write to `stdout` use `Default::default()`.
+    ///
+    pub fn new<T>(writer: T) -> Self
     where
         T: Write + Sized + 'static,
     {
         MarkdownGenerator {
             writer: Box::new(writer),
         }
+    }
+
+    fn newln(&mut self) {
+        writeln!(self.writer.as_mut()).expect(IO_ERROR_MSG);
     }
 }
 
@@ -45,13 +54,15 @@ impl PolicyVisitor for MarkdownGenerator {
     }
 
     fn id(&mut self, i: &String) {
-        writeln!(self.writer.as_mut(), "\n> Policy ID: {}", i).expect(IO_ERROR_MSG);
+        self.newln();
+        writeln!(self.writer.as_mut(), "> Policy ID: {}", i).expect(IO_ERROR_MSG);
     }
 
     fn version(&mut self, v: &Version) {
+        self.newln();
         writeln!(
             self.writer.as_mut(),
-            "\n> IAM Policy Version: {}",
+            "> IAM Policy Version: {}",
             match v {
                 Version::V2008 => "2008-10-17",
                 Version::V2012 => "2012-10-17",
@@ -67,23 +78,27 @@ impl PolicyVisitor for MarkdownGenerator {
 
 impl StatementVisitor for MarkdownGenerator {
     fn start(&mut self) {
-        writeln!(self.writer.as_mut(), "\n## Statement").expect(IO_ERROR_MSG);
+        self.newln();
+        writeln!(self.writer.as_mut(), "## Statement").expect(IO_ERROR_MSG);
     }
 
     fn sid(&mut self, s: &String) {
-        writeln!(self.writer.as_mut(), "\n> Statement ID: {}", s).expect(IO_ERROR_MSG);
+        self.newln();
+        writeln!(self.writer.as_mut(), "> Statement ID: {}", s).expect(IO_ERROR_MSG);
     }
 
     fn effect(&mut self, e: &Effect) {
+        self.newln();
         writeln!(
             self.writer.as_mut(),
-            "\n**{}** IF\n",
+            "**{}** IF",
             match e {
                 Effect::Allow => "ALLOW",
                 Effect::Deny => "DENY",
             }
         )
         .expect(IO_ERROR_MSG);
+        self.newln();
     }
 
     fn principal(&mut self, p: &Principal) {
