@@ -14,7 +14,7 @@ default-run = "policy"
 [[bin]]
 name = "policy"
 path = "src/bin/policy.rs"
-required-features = ["command-line", "offline_eval"]
+required-features = ["command_line", "offline_eval"]
 
 [features]
 command_line = ["structopt",  "tracing", "tracing-subscriber"]

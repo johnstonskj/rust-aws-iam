@@ -7,7 +7,7 @@ TBD
 
 ```rust,ignore
 let generator = MarkdownGenerator::default();
-report::walk_policy(&policy, &generator, &mut stdout());
+report::walk_policy(&policy, &generator);
 ```
 
 # Building a new Visitor

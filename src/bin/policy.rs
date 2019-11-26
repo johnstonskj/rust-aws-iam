@@ -11,12 +11,12 @@ use aws_iam::report::MarkdownGenerator;
 use std::error::Error;
 use std::fmt;
 use std::fs::OpenOptions;
-use std::io::{stdin, stdout, Write};
+use std::io::{stdin, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::StructOpt;
-use tracing::{span, Level};
-use tracing_subscriber::{EnvFilter, FmtSubscriber, LevelFilter};
+use tracing_subscriber::filter::LevelFilter;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 // ------------------------------------------------------------------------------------------------
 // Command-Line Parsing
@@ -147,16 +147,25 @@ fn main() -> Result<(), ToolError> {
 
 fn init_tracing(verbosity: i8) {
     let log_level = match verbosity {
-        0 => LevelFilter::Off,
-        1 => LevelFilter::Error,
-        2 => LevelFilter::Warn,
-        3 => LevelFilter::Info,
-        4 => LevelFilter::Debug,
-        _ => LevelFilter::Trace,
+        0 => LevelFilter::OFF,
+        1 => LevelFilter::ERROR,
+        2 => LevelFilter::WARN,
+        3 => LevelFilter::INFO,
+        4 => LevelFilter::DEBUG,
+        _ => LevelFilter::TRACE,
     };
 
-    let default_directive = format!("{}={},aws_iam={}", module_path!(), log_level, log_level);
-    let filter = EnvFilter::from_default_env().add_directive(default_directive.parse()?);
+    let filter = EnvFilter::from_default_env()
+        .add_directive(
+            format!("{}={}", module_path!(), log_level)
+                .parse()
+                .expect("Issue with comamnd-line trace directive"),
+        )
+        .add_directive(
+            format!("aws_iam={}", log_level)
+                .parse()
+                .expect("Issue with library trace directive"),
+        );
     let subscriber = FmtSubscriber::builder().with_env_filter(filter).finish();
 
     tracing::subscriber::set_global_default(subscriber)
@@ -259,7 +268,7 @@ fn verify_file_result(
     result: Result<Policy, io::Error>,
     format: Option<Format>,
 ) -> Result<(), ToolError> {
-    let span = debug_span!("verify_file_result", ?file_name, ?format);
+    let span = debug_span!("verify_file_result", ?result, ?format);
     let _enter = span.enter();
     match result {
         Ok(policy) => {
@@ -269,8 +278,8 @@ fn verify_file_result(
                     match format {
                         Format::Rust => println!("{:#?}", policy),
                         Format::Markdown => {
-                            let generator = MarkdownGenerator::default();
-                            report::walk_policy(&policy, &generator, &mut stdout());
+                            let mut generator = MarkdownGenerator::default();
+                            report::walk_policy(&policy, &mut generator);
                         }
                         _ => warn!("unsupported format"),
                     }

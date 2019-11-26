@@ -1,6 +1,6 @@
 use crate::model::*;
 use crate::report::visitor::*;
-use std::io::Write;
+use std::io::{stdout, Write};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -10,8 +10,9 @@ use std::io::Write;
 /// This types implements `PolicyVisitor`, `StatementVisitor`, and `ConditionVisitor` to
 /// produce Markdown formatted documentation for a Policy.
 ///
-#[derive(Debug)]
-pub struct MarkdownGenerator {}
+pub struct MarkdownGenerator {
+    writer: Box<dyn Write>,
+}
 
 // ------------------------------------------------------------------------------------------------
 // Implementations
@@ -19,24 +20,37 @@ pub struct MarkdownGenerator {}
 
 const IO_ERROR_MSG: &str = "Unexpected write error";
 
+impl MarkdownGenerator {
+    fn new<T>(writer: T) -> Self
+    where
+        T: Write + Sized + 'static,
+    {
+        MarkdownGenerator {
+            writer: Box::new(writer),
+        }
+    }
+}
+
 impl Default for MarkdownGenerator {
     fn default() -> Self {
-        MarkdownGenerator {}
+        MarkdownGenerator {
+            writer: Box::new(stdout()),
+        }
     }
 }
 
 impl PolicyVisitor for MarkdownGenerator {
-    fn start(&self, writer: &mut dyn Write) {
-        writeln!(writer, "# Policy").expect(IO_ERROR_MSG);
+    fn start(&mut self) {
+        writeln!(self.writer.as_mut(), "# Policy").expect(IO_ERROR_MSG);
     }
 
-    fn id(&self, writer: &mut dyn Write, i: &String) {
-        writeln!(writer, "\n> Policy ID: {}", i).expect(IO_ERROR_MSG);
+    fn id(&mut self, i: &String) {
+        writeln!(self.writer.as_mut(), "\n> Policy ID: {}", i).expect(IO_ERROR_MSG);
     }
 
-    fn version(&self, writer: &mut dyn Write, v: &Version) {
+    fn version(&mut self, v: &Version) {
         writeln!(
-            writer,
+            self.writer.as_mut(),
             "\n> IAM Policy Version: {}",
             match v {
                 Version::V2008 => "2008-10-17",
@@ -46,23 +60,23 @@ impl PolicyVisitor for MarkdownGenerator {
         .expect(IO_ERROR_MSG);
     }
 
-    fn statement<'a>(&'a self) -> Option<Box<&'a dyn StatementVisitor>> {
+    fn statement_visitor(&mut self) -> Option<Box<&mut dyn StatementVisitor>> {
         Some(Box::new(self))
     }
 }
 
 impl StatementVisitor for MarkdownGenerator {
-    fn start(&self, writer: &mut dyn Write) {
-        writeln!(writer, "\n## Statement").expect(IO_ERROR_MSG);
+    fn start(&mut self) {
+        writeln!(self.writer.as_mut(), "\n## Statement").expect(IO_ERROR_MSG);
     }
 
-    fn sid(&self, writer: &mut dyn Write, s: &String) {
-        writeln!(writer, "\n> Statement ID: {}", s).expect(IO_ERROR_MSG);
+    fn sid(&mut self, s: &String) {
+        writeln!(self.writer.as_mut(), "\n> Statement ID: {}", s).expect(IO_ERROR_MSG);
     }
 
-    fn effect(&self, writer: &mut dyn Write, e: &Effect) {
+    fn effect(&mut self, e: &Effect) {
         writeln!(
-            writer,
+            self.writer.as_mut(),
             "\n**{}** IF\n",
             match e {
                 Effect::Allow => "ALLOW",
@@ -72,20 +86,20 @@ impl StatementVisitor for MarkdownGenerator {
         .expect(IO_ERROR_MSG);
     }
 
-    fn principal(&self, writer: &mut dyn Write, p: &Principal) {
+    fn principal(&mut self, p: &Principal) {
         let (negated, values) = match p {
             Principal::Principal(v) => (false, v),
             Principal::NotPrincipal(v) => (true, v),
         };
         writeln!(
-            writer,
+            self.writer.as_mut(),
             "* `Principal {}`**`IN`**",
             if negated { "`**`NOT`**` " } else { "" }
         )
         .expect(IO_ERROR_MSG);
         for (kind, value) in values {
             writeln!(
-                writer,
+                self.writer.as_mut(),
                 "   * _`type`_` = {:?} `**`AND`**` `_`id`_` {}`",
                 kind,
                 match value {
@@ -103,13 +117,13 @@ impl StatementVisitor for MarkdownGenerator {
         }
     }
 
-    fn action(&self, writer: &mut dyn Write, a: &Action) {
+    fn action(&mut self, a: &Action) {
         let (negated, value) = match a {
             Action::Action(v) => (false, v),
             Action::NotAction(v) => (true, v),
         };
         writeln!(
-            writer,
+            self.writer.as_mut(),
             "* `Action {}{}`",
             if negated { "`**`NOT`**` " } else { "" },
             match value {
@@ -124,13 +138,13 @@ impl StatementVisitor for MarkdownGenerator {
         .expect(IO_ERROR_MSG);
     }
 
-    fn resource(&self, writer: &mut dyn Write, r: &Resource) {
+    fn resource(&mut self, r: &Resource) {
         let (negated, value) = match r {
             Resource::Resource(v) => (false, v),
             Resource::NotResource(v) => (true, v),
         };
         writeln!(
-            writer,
+            self.writer.as_mut(),
             "* `Resource {} {}`",
             if negated { "`**`NOT`**`" } else { "" },
             match value {
@@ -145,19 +159,19 @@ impl StatementVisitor for MarkdownGenerator {
         .expect(IO_ERROR_MSG);
     }
 
-    fn condition<'a>(&'a self) -> Option<Box<&'a dyn ConditionVisitor>> {
+    fn condition_visitor(&mut self) -> Option<Box<&mut dyn ConditionVisitor>> {
         Some(Box::new(self))
     }
 }
 
 impl ConditionVisitor for MarkdownGenerator {
-    fn start(&self, writer: &mut dyn Write) {
-        write!(writer, "* `Condition ").expect(IO_ERROR_MSG);
+    fn start(&mut self) {
+        write!(self.writer.as_mut(), "* `Condition ").expect(IO_ERROR_MSG);
     }
 
-    fn left(&self, writer: &mut dyn Write, f: &QString, op: &ConditionOperator) {
+    fn left(&mut self, f: &QString, op: &ConditionOperator) {
         write!(
-            writer,
+            self.writer.as_mut(),
             "{}`_`{}`_`{}",
             if op.if_exists {
                 "`**`IF EXISTS`**` "
@@ -174,9 +188,9 @@ impl ConditionVisitor for MarkdownGenerator {
         .expect(IO_ERROR_MSG);
     }
 
-    fn operator(&self, writer: &mut dyn Write, op: &ConditionOperator) {
+    fn operator(&mut self, op: &ConditionOperator) {
         write!(
-            writer,
+            self.writer.as_mut(),
             " `**`{:?}`**`{} ",
             op.operator,
             match op.quantifier {
@@ -188,9 +202,9 @@ impl ConditionVisitor for MarkdownGenerator {
         .expect(IO_ERROR_MSG);
     }
 
-    fn right(&self, writer: &mut dyn Write, v: &OneOrAll<ConditionValue>, _op: &ConditionOperator) {
+    fn right(&mut self, v: &OneOrAll<ConditionValue>, _op: &ConditionOperator) {
         write!(
-            writer,
+            self.writer.as_mut(),
             "{}",
             match v {
                 OneOrAll::One(v) => {
@@ -211,8 +225,8 @@ impl ConditionVisitor for MarkdownGenerator {
         .expect(IO_ERROR_MSG);
     }
 
-    fn finish(&self, writer: &mut dyn Write) {
-        writeln!(writer, "`").expect(IO_ERROR_MSG);
+    fn finish(&mut self) {
+        writeln!(self.writer.as_mut(), "`").expect(IO_ERROR_MSG);
     }
 }
 
