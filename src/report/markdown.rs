@@ -8,7 +8,7 @@ use std::io::{stdout, Write};
 
 ///
 /// This types implements `PolicyVisitor`, `StatementVisitor`, and `ConditionVisitor` to
-/// produce Markdown formatted documentation for a Policy.
+/// produce [Markdown](https://commonmark.org/) formatted documentation for a Policy.
 ///
 #[allow(missing_debug_implementations)]
 pub struct MarkdownGenerator {

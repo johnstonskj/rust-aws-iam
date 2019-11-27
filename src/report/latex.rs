@@ -8,7 +8,7 @@ use std::io::{stdout, Write};
 
 ///
 /// This types implements `PolicyVisitor`, `StatementVisitor`, and `ConditionVisitor` to
-/// produce Markdown formatted documentation for a Policy.
+/// produce [LaTeX](https://www.latex-project.org/) formatted documentation for a Policy.
 ///
 #[allow(missing_debug_implementations)]
 pub struct LatexGenerator {
@@ -26,7 +26,8 @@ const IO_ERROR_MSG: &str = "Unexpected write error";
 impl LatexGenerator {
     ///
     /// Create a new generator that will write formatted content to `writer`. If you wish
-    /// to write to `stdout` use `Default::default()`.
+    /// to write to `stdout` use `Default::default()`. If `stand_alone` is true a document
+    /// class, header and operator appendix are included, otherwise a single section is output.
     ///
     pub fn new<T>(writer: T, stand_alone: bool) -> Self
     where
