@@ -24,7 +24,7 @@ mod markdown;
 pub use markdown::MarkdownGenerator;
 
 mod latex;
-pub use latex::*;
+pub use latex::LatexGenerator;
 
 mod visitor;
 pub use visitor::*;

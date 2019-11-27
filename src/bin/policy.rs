@@ -7,7 +7,7 @@ extern crate tracing;
 use aws_iam::io;
 use aws_iam::model::Policy;
 use aws_iam::report;
-use aws_iam::report::MarkdownGenerator;
+use aws_iam::report::{LatexGenerator, MarkdownGenerator};
 use std::error::Error;
 use std::fmt;
 use std::fs::OpenOptions;
@@ -281,7 +281,10 @@ fn verify_file_result(
                             let mut generator = MarkdownGenerator::default();
                             report::walk_policy(&policy, &mut generator);
                         }
-                        _ => warn!("unsupported format"),
+                        Format::Latex => {
+                            let mut generator = LatexGenerator::default();
+                            report::walk_policy(&policy, &mut generator);
+                        }
                     }
                 }
                 None => debug!("parsed successfully"),

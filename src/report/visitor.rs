@@ -73,7 +73,9 @@ pub trait StatementVisitor {
     /// Called by the walker to allow handling of the `resource` component of the Statement.
     fn resource(&mut self, r: &Resource) {}
 
-    /// Return an associated `ConditionVisitor` if necessary.
+    /// Return an associated `ConditionVisitor` if necessary. Note that this is *only*
+    /// called *if* the statement has conditions but the resulting visitor is called once
+    /// per condition.
     fn condition_visitor(&mut self) -> Option<Box<&mut dyn ConditionVisitor>> {
         None
     }
@@ -153,8 +155,8 @@ fn walk_statement(statement: &Statement, visitor: Box<&mut dyn StatementVisitor>
     }
     visitor.action(&statement.action);
     visitor.resource(&statement.resource);
-    if let Some(condition_visitor) = visitor.condition_visitor() {
-        if let Some(conditions) = &statement.condition {
+    if let Some(conditions) = &statement.condition {
+        if let Some(condition_visitor) = visitor.condition_visitor() {
             walk_conditions(conditions, condition_visitor)
         }
     }
