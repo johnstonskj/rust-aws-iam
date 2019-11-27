@@ -33,6 +33,7 @@ pub fn expand_string(
             .map_err(|_| EvaluationError::InvalidVariableName(key.to_string()))?;
         match environment.get(&key) {
             Some(ConditionValue::String(v)) => output.push_str(&v),
+            None => return Err(EvaluationError::UnknownVariableName(key.to_string())),
             _ => return Err(EvaluationError::ExpectingVariableType("String".to_string())),
         };
         from_idx = variable.end();
@@ -53,8 +54,7 @@ mod tests {
     use crate::model::{ConditionValue, QString};
     use crate::offline::request::Environment;
     use crate::offline::variables::expand_string;
-    use crate::offline::{EvaluationError, Request};
-    use std::collections::HashMap;
+    use crate::offline::EvaluationError;
     use std::str::FromStr;
 
     fn make_environment() -> Environment {
