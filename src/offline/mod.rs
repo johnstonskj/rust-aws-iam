@@ -47,7 +47,6 @@ pub fn evaluate(request: &Request, policy: &Policy) -> Result<Effect, Evaluation
 ///
 #[instrument]
 pub fn evaluate_all(request: &Request, policies: &[&Policy]) -> Result<Effect, EvaluationError> {
-    let request_id = &request.request_id_or_default();
     let results: Vec<Effect> = policies
         .iter()
         .enumerate()

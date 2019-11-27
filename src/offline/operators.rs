@@ -156,6 +156,7 @@ pub fn evaluate(
 // ------------------------------------------------------------------------------------------------
 
 #[derive(Debug)]
+#[allow(dead_code)] // TODO: remove this once all operators are implemented.
 enum ExpectedValueType {
     String,
     Integer,
@@ -246,10 +247,10 @@ fn string_not_equals_ignore_case(
     }
 }
 
-fn string_like(lhs: &ConditionValue, rhs: &ConditionValue) -> Result<bool, EvaluationError> {
+fn string_like(_lhs: &ConditionValue, _rhs: &ConditionValue) -> Result<bool, EvaluationError> {
     Ok(false)
 }
 
-fn string_not_like(lhs: &ConditionValue, rhs: &ConditionValue) -> Result<bool, EvaluationError> {
+fn string_not_like(_lhs: &ConditionValue, _rhs: &ConditionValue) -> Result<bool, EvaluationError> {
     Ok(false)
 }

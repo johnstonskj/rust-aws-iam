@@ -21,6 +21,7 @@ use std::collections::HashMap;
 /// 1. if statement visitor, visit each statement in turn (in the order they are in the JSON file)
 /// 1. `finish()`
 ///
+#[allow(unused_variables)]
 pub trait PolicyVisitor {
     /// Called to signal the walker has started a Policy.
     fn start(&mut self) {}
@@ -54,6 +55,7 @@ pub trait PolicyVisitor {
 /// 1. if condition visitor, visit each condition in turn (in the order they are in the JSON file)
 /// 1. `finish()`
 ///
+#[allow(unused_variables)]
 pub trait StatementVisitor {
     /// Called to signal the walker has started a Statement.
     fn start(&mut self) {}
@@ -94,6 +96,7 @@ pub trait StatementVisitor {
 /// 1. `right()`
 /// 1. `finish()`
 ///
+#[allow(unused_variables)]
 pub trait ConditionVisitor {
     /// Called to signal the walker has started a Condition.
     fn start(&mut self) {}
