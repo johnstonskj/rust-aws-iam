@@ -127,8 +127,8 @@ the command `policy verify -f markdown` will produce the output between the foll
 
 * `Action `**`NOT`**` = "iam:*"`
 * `Resource  = "*"`
-* `Condition `**`IF EXISTS`**` `_`aws:MultiFactorAuthPresent`_` `**`THEN`**
-   * _`aws:MultiFactorAuthPresent`_` `**`Bool`**` "false"`
+* `Condition `**`IF EXISTS`**` `*`aws:MultiFactorAuthPresent`*` `**`THEN`**
+   * *`aws:MultiFactorAuthPresent`*` `**`Bool`**` "false"`
 -----
 
 ## Changes

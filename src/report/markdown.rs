@@ -115,7 +115,7 @@ impl StatementVisitor for MarkdownGenerator {
         for (kind, value) in values {
             writeln!(
                 self.writer.as_mut(),
-                "   * _`type`_` = {:?} `**`AND`**` `_`id`_` {}`",
+                "   * *`type`*` = {:?} `**`AND`**` `*`id`*` {}`",
                 kind,
                 match value {
                     OneOrAny::Any => {
@@ -187,7 +187,7 @@ impl ConditionVisitor for MarkdownGenerator {
     fn left(&mut self, f: &QString, op: &ConditionOperator) {
         write!(
             self.writer.as_mut(),
-            "{}`_`{}`_`{}",
+            "{}`*`{}`*`{}",
             if op.if_exists {
                 "`**`IF EXISTS`**` "
             } else {
@@ -195,7 +195,7 @@ impl ConditionVisitor for MarkdownGenerator {
             },
             f.to_string(),
             if op.if_exists {
-                format!(" `**`THEN`**\n   * _`{}`_`", f.to_string())
+                format!(" `**`THEN`**\n   * *`{}`*`", f.to_string())
             } else {
                 "".to_string()
             },
