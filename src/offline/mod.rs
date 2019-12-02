@@ -256,7 +256,7 @@ mod tests {
     }
 
     #[test]
-    fn test_simple_deny() {
+    fn test_deny_resource_string_match() {
         let policy = r#"{
   "Version": "2012-10-17",
   "Statement": {
@@ -267,7 +267,7 @@ mod tests {
 }"#;
         let policy = io::read_from_string(policy).expect("error parsing policy");
         let request = make_request(
-            "test_simple_deny",
+            "test_deny_resource_string_match",
             None,
             "dynamodb:read",
             "arn:aws:dynamodb:us-east-2:123456789012:table/NotBooks",
@@ -277,6 +277,33 @@ mod tests {
             result,
             Ok(EvaluationResult::Deny(
                 Source::Resource,
+                String::from("string_match")
+            ))
+        );
+    }
+
+    #[test]
+    fn test_deny_action_qstring_match() {
+        let policy = r#"{
+  "Version": "2012-10-17",
+  "Statement": {
+    "Effect": "Allow",
+    "Action": "dynamodb:*",
+    "Resource": "arn:aws:dynamodb:us-east-2:123456789012:table/Books"
+  }
+}"#;
+        let policy = io::read_from_string(policy).expect("error parsing policy");
+        let request = make_request(
+            "test_deny_action_qstring_match",
+            None,
+            "s3:read",
+            "arn:aws:dynamodb:us-east-2:123456789012:table/Books",
+        );
+        let result = evaluate(&request, &policy);
+        assert_eq!(
+            result,
+            Ok(EvaluationResult::Deny(
+                Source::Action,
                 String::from("string_match")
             ))
         );

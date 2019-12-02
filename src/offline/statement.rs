@@ -229,8 +229,8 @@ fn eval_statement_resource(
                 if resource_match(request_resource, v) {
                     Some(EvaluationResult::Allow)
                 } else {
-                    println!(
-                        //target = "eval",
+                    debug!(
+                        target = "eval",
                         "resource: {} ≈ {} → false", request_resource, v
                     );
                     Some(EvaluationResult::Deny(
@@ -243,8 +243,8 @@ fn eval_statement_resource(
                 if contains_resource(request_resource, vs) {
                     Some(EvaluationResult::Allow)
                 } else {
-                    println!(
-                        //target = "eval",
+                    debug!(
+                        target = "eval",
                         "resource: {:?} ≈ {} → false", vs, request_resource
                     );
                     Some(EvaluationResult::Deny(
@@ -261,8 +261,8 @@ fn eval_statement_resource(
             )),
             OneOrAny::One(v) => {
                 if resource_match(request_resource, v) {
-                    println!(
-                        //target = "eval",
+                    debug!(
+                        target = "eval",
                         "resource: {} ≉ {} → false", request_resource, v
                     );
                     Some(EvaluationResult::Deny(
@@ -275,8 +275,8 @@ fn eval_statement_resource(
             }
             OneOrAny::AnyOf(vs) => {
                 if contains_resource(request_resource, vs) {
-                    println!(
-                        //target = "eval",
+                    debug!(
+                        target = "eval",
                         "resource: {:?} ≉ {} → false", vs, request_resource
                     );
                     Some(EvaluationResult::Deny(
