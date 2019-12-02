@@ -9,6 +9,12 @@ use std::string::ToString;
 use tracing::{error, instrument};
 
 // ------------------------------------------------------------------------------------------------
+// Public Types
+// ------------------------------------------------------------------------------------------------
+
+pub type OperatorResult = Result<bool, EvaluationError>;
+
+// ------------------------------------------------------------------------------------------------
 // Public Functions
 // ------------------------------------------------------------------------------------------------
 
@@ -18,7 +24,7 @@ pub fn evaluate_all(
     operator: &GlobalConditionOperator,
     lhs: &ConditionValue,
     rhs: &[ConditionValue],
-) -> Result<bool, EvaluationError> {
+) -> OperatorResult {
     Ok(rhs
         .iter()
         .all(|r| match evaluate(environment, operator, lhs, r) {
@@ -36,7 +42,7 @@ pub fn evaluate_any(
     operator: &GlobalConditionOperator,
     lhs: &ConditionValue,
     rhs: &[ConditionValue],
-) -> Result<bool, EvaluationError> {
+) -> OperatorResult {
     Ok(rhs
         .iter()
         .any(|r| match evaluate(environment, operator, lhs, r) {
@@ -54,7 +60,7 @@ pub fn evaluate(
     operator: &GlobalConditionOperator,
     lhs: &ConditionValue,
     rhs: &ConditionValue,
-) -> Result<bool, EvaluationError> {
+) -> OperatorResult {
     match operator {
         GlobalConditionOperator::StringEquals => call_operator(
             environment,
@@ -172,11 +178,11 @@ impl Display for ExpectedValueType {
 
 fn call_operator(
     environment: &HashMap<QString, ConditionValue>,
-    operator: impl Fn(&ConditionValue, &ConditionValue) -> Result<bool, EvaluationError>,
+    operator: impl Fn(&ConditionValue, &ConditionValue) -> OperatorResult,
     lhs: &ConditionValue,
     rhs: &ConditionValue,
     value_type: &ExpectedValueType,
-) -> Result<bool, EvaluationError> {
+) -> OperatorResult {
     let lhs = match (value_type, lhs) {
         (ExpectedValueType::String, ConditionValue::String(_))
         | (ExpectedValueType::Integer, ConditionValue::Integer(_))
@@ -209,24 +215,21 @@ fn expand_rhs_value(
     }
 }
 
-fn string_equals(lhs: &ConditionValue, rhs: &ConditionValue) -> Result<bool, EvaluationError> {
+fn string_equals(lhs: &ConditionValue, rhs: &ConditionValue) -> OperatorResult {
     match (lhs, rhs) {
         (ConditionValue::String(lhs), ConditionValue::String(rhs)) => Ok(lhs == rhs),
         (_, _) => Err(EvaluationError::ExpectingVariableType("String".to_string())),
     }
 }
 
-fn string_not_equals(lhs: &ConditionValue, rhs: &ConditionValue) -> Result<bool, EvaluationError> {
+fn string_not_equals(lhs: &ConditionValue, rhs: &ConditionValue) -> OperatorResult {
     match (lhs, rhs) {
         (ConditionValue::String(lhs), ConditionValue::String(rhs)) => Ok(lhs != rhs),
         (_, _) => Err(EvaluationError::ExpectingVariableType("String".to_string())),
     }
 }
 
-fn string_equals_ignore_case(
-    lhs: &ConditionValue,
-    rhs: &ConditionValue,
-) -> Result<bool, EvaluationError> {
+fn string_equals_ignore_case(lhs: &ConditionValue, rhs: &ConditionValue) -> OperatorResult {
     match (lhs, rhs) {
         (ConditionValue::String(lhs), ConditionValue::String(rhs)) => {
             Ok(lhs.to_lowercase() == rhs.to_lowercase())
@@ -235,10 +238,7 @@ fn string_equals_ignore_case(
     }
 }
 
-fn string_not_equals_ignore_case(
-    lhs: &ConditionValue,
-    rhs: &ConditionValue,
-) -> Result<bool, EvaluationError> {
+fn string_not_equals_ignore_case(lhs: &ConditionValue, rhs: &ConditionValue) -> OperatorResult {
     match (lhs, rhs) {
         (ConditionValue::String(lhs), ConditionValue::String(rhs)) => {
             Ok(lhs.to_lowercase() != rhs.to_lowercase())
@@ -247,10 +247,10 @@ fn string_not_equals_ignore_case(
     }
 }
 
-fn string_like(_lhs: &ConditionValue, _rhs: &ConditionValue) -> Result<bool, EvaluationError> {
+fn string_like(_lhs: &ConditionValue, _rhs: &ConditionValue) -> OperatorResult {
     Ok(false)
 }
 
-fn string_not_like(_lhs: &ConditionValue, _rhs: &ConditionValue) -> Result<bool, EvaluationError> {
+fn string_not_like(_lhs: &ConditionValue, _rhs: &ConditionValue) -> OperatorResult {
     Ok(false)
 }

@@ -3,7 +3,9 @@ use crate::model::{
     Principal, QString, Resource, Statement,
 };
 use crate::offline::request::{Environment, Principal as RequestPrincipal, Request};
-use crate::offline::{operators, reduce_optional_results, EvaluationResult};
+use crate::offline::{
+    operators, reduce_optional_results, EvaluationResult, PartialEvaluationResult,
+};
 use crate::offline::{EvaluationError, Source};
 use std::collections::HashMap;
 use tracing::{debug, info, instrument};
@@ -17,7 +19,7 @@ pub fn evaluate_statement(
     request: &Request,
     statement: &Statement,
     statement_index: i32,
-) -> Result<Option<EvaluationResult>, EvaluationError> {
+) -> Result<PartialEvaluationResult, EvaluationError> {
     let mut effect: Option<EvaluationResult> = None;
 
     // >>>>> eval principal
@@ -66,7 +68,7 @@ fn statement_id(statement: &Statement, statement_index: i32) -> String {
 fn eval_statement_principal(
     request_principal: &Option<RequestPrincipal>,
     statement_principal: &Option<Principal>,
-) -> Option<EvaluationResult> {
+) -> PartialEvaluationResult {
     let effect = if let Some(principal) = request_principal {
         match statement_principal {
             None => None,
@@ -118,8 +120,10 @@ fn eval_statement_principal(
                         }
                         OneOrAny::AnyOf(vs) => {
                             if contains_match(&principal.identifier, vs) {
-                                Some(EvaluationResult::Deny)
-                                    < (Source::NotPrincipal, "contains_match".to_string())
+                                Some(EvaluationResult::Deny(
+                                    Source::NotPrincipal,
+                                    "contains_match".to_string(),
+                                ))
                             } else {
                                 Some(EvaluationResult::Allow)
                             }
@@ -144,7 +148,7 @@ fn eval_statement_principal(
 fn eval_statement_action(
     request_action: &QString,
     statement_action: &Action,
-) -> Option<EvaluationResult> {
+) -> PartialEvaluationResult {
     let effect = match statement_action {
         Action::Action(a) => match a {
             OneOrAny::Any => Some(EvaluationResult::Allow),
@@ -156,7 +160,10 @@ fn eval_statement_action(
                         target = "eval",
                         "action: {} ≈ {} → false", request_action, v
                     );
-                    Some(EvaluationResult::Deny)
+                    Some(EvaluationResult::Deny(
+                        Source::Action,
+                        "string_match".to_string(),
+                    ))
                 }
             }
             OneOrAny::AnyOf(vs) => {
@@ -167,19 +174,25 @@ fn eval_statement_action(
                         target = "eval",
                         "action: {:?} ≈ {} → false", vs, request_action
                     );
-                    Some(EvaluationResult::Deny)
+                    Some(EvaluationResult::Deny(
+                        Source::Action,
+                        "contains_match".to_string(),
+                    ))
                 }
             }
         },
         Action::NotAction(a) => match a {
-            OneOrAny::Any => Some(EvaluationResult::Deny),
+            OneOrAny::Any => Some(EvaluationResult::Deny(Source::NotAction, "any".to_string())),
             OneOrAny::One(v) => {
                 if string_match(&request_action.to_string(), &v.to_string()) {
                     debug!(
                         target = "eval",
                         "action: {} ≉ {} → false", request_action, v
                     );
-                    Some(EvaluationResult::Deny)
+                    Some(EvaluationResult::Deny(
+                        Source::NotAction,
+                        "string_match".to_string(),
+                    ))
                 } else {
                     Some(EvaluationResult::Allow)
                 }
@@ -190,7 +203,10 @@ fn eval_statement_action(
                         target = "eval",
                         "action: {:?} ≉ {} → false", vs, request_action
                     );
-                    Some(EvaluationResult::Deny)
+                    Some(EvaluationResult::Deny(
+                        Source::NotAction,
+                        "contains_match".to_string(),
+                    ))
                 } else {
                     Some(EvaluationResult::Allow)
                 }
@@ -205,7 +221,7 @@ fn eval_statement_action(
 fn eval_statement_resource(
     request_resource: &String,
     statement_resource: &Resource,
-) -> Option<EvaluationResult> {
+) -> PartialEvaluationResult {
     let effect = match statement_resource {
         Resource::Resource(a) => match a {
             OneOrAny::Any => Some(EvaluationResult::Allow),
@@ -217,7 +233,10 @@ fn eval_statement_resource(
                         //target = "eval",
                         "resource: {} ≈ {} → false", request_resource, v
                     );
-                    Some(EvaluationResult::Deny)
+                    Some(EvaluationResult::Deny(
+                        Source::Resource,
+                        "string_match".to_string(),
+                    ))
                 }
             }
             OneOrAny::AnyOf(vs) => {
@@ -228,19 +247,28 @@ fn eval_statement_resource(
                         //target = "eval",
                         "resource: {:?} ≈ {} → false", vs, request_resource
                     );
-                    Some(EvaluationResult::Deny)
+                    Some(EvaluationResult::Deny(
+                        Source::Action,
+                        "contains_match".to_string(),
+                    ))
                 }
             }
         },
         Resource::NotResource(a) => match a {
-            OneOrAny::Any => Some(EvaluationResult::Deny),
+            OneOrAny::Any => Some(EvaluationResult::Deny(
+                Source::NotResource,
+                "any".to_string(),
+            )),
             OneOrAny::One(v) => {
                 if resource_match(request_resource, v) {
                     println!(
                         //target = "eval",
                         "resource: {} ≉ {} → false", request_resource, v
                     );
-                    Some(EvaluationResult::Deny)
+                    Some(EvaluationResult::Deny(
+                        Source::NotResource,
+                        "string_match".to_string(),
+                    ))
                 } else {
                     Some(EvaluationResult::Allow)
                 }
@@ -251,7 +279,10 @@ fn eval_statement_resource(
                         //target = "eval",
                         "resource: {:?} ≉ {} → false", vs, request_resource
                     );
-                    Some(EvaluationResult::Deny)
+                    Some(EvaluationResult::Deny(
+                        Source::NotAction,
+                        "contains_match".to_string(),
+                    ))
                 } else {
                     Some(EvaluationResult::Allow)
                 }
@@ -264,23 +295,24 @@ fn eval_statement_resource(
     );
     effect
 }
-#[instrument]
+
+//#[instrument]
 fn eval_statement_conditions(
     request_environment: &Environment,
     statement_conditions: &Option<
         HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>>,
     >,
-) -> Result<Option<EvaluationResult>, EvaluationError> {
+) -> Result<PartialEvaluationResult, EvaluationError> {
     let result = if let Some(conditions) = statement_conditions {
-        let (mut effects, mut errors): (
-            Vec<Result<Option<EvaluationResult>, EvaluationError>>,
-            Vec<Result<Option<EvaluationResult>, EvaluationError>>,
-        ) = conditions
+        let mut results = conditions
             .iter()
             .map(|(op, vs)| eval_statement_condition_op(request_environment, op, vs))
             .flatten()
-            .partition(|r| r.is_ok());
-        reduce_optional_results(&mut effects, &mut errors)
+            .collect();
+        match results {
+            Ok(mut results) => Ok(reduce_optional_results(&mut results)),
+            Err(err) => Err(err),
+        }
     } else {
         Ok(None)
     };
@@ -292,7 +324,7 @@ fn eval_statement_condition_op(
     request_environment: &Environment,
     condition_operator: &ConditionOperator,
     condition_values: &HashMap<QString, OneOrAll<ConditionValue>>,
-) -> Vec<Result<Option<EvaluationResult>, EvaluationError>> {
+) -> Vec<Result<PartialEvaluationResult, EvaluationError>> {
     info!("Statement condition, operator {:?}", condition_operator);
     let results: Vec<Result<Option<EvaluationResult>, EvaluationError>> = condition_values
         .iter()
@@ -309,7 +341,7 @@ fn eval_statement_condition_key(
     condition_operator: &ConditionOperator,
     condition_key: &QString,
     condition_values: &OneOrAll<ConditionValue>,
-) -> Result<Option<EvaluationResult>, EvaluationError> {
+) -> Result<PartialEvaluationResult, EvaluationError> {
     match request_environment.get(condition_key) {
         None => {
             if condition_operator.if_exists {
@@ -321,15 +353,15 @@ fn eval_statement_condition_key(
         Some(lhs) => match (&condition_operator.quantifier, condition_values) {
             (None, OneOrAll::One(rhs)) => {
                 operators::evaluate(request_environment, &condition_operator.operator, lhs, rhs)
-                    .map(bool_effect)
+                    .map(|r| bool_effect(r, condition_operator, condition_key, "one"))
             }
             (Some(ConditionOperatorQuantifier::ForAllValues), OneOrAll::All(rhs)) => {
                 operators::evaluate_all(request_environment, &condition_operator.operator, lhs, rhs)
-                    .map(bool_effect)
+                    .map(|r| bool_effect(r, condition_operator, condition_key, "for_all"))
             }
             (Some(ConditionOperatorQuantifier::ForAnyValue), OneOrAll::All(rhs)) => {
                 operators::evaluate_any(request_environment, &condition_operator.operator, lhs, rhs)
-                    .map(bool_effect)
+                    .map(|r| bool_effect(r, condition_operator, condition_key, "for_any"))
             }
             _ => Err(EvaluationError::InvalidValueCardinality),
         },
@@ -391,10 +423,18 @@ fn contains_resource(lhs: &String, rhs: &Vec<String>) -> bool {
     rhs.iter().any(|r| resource_match(lhs, r))
 }
 
-fn bool_effect(result: bool) -> Option<EvaluationResult> {
+fn bool_effect(
+    result: bool,
+    condition_operator: &ConditionOperator,
+    condition_key: &QString,
+    message: &str,
+) -> Option<EvaluationResult> {
     if result {
         Some(EvaluationResult::Allow)
     } else {
-        Some(EvaluationResult::Deny)
+        Some(EvaluationResult::Deny(
+            Source::Condition(condition_operator.clone(), condition_key.clone()),
+            String::from(message),
+        ))
     }
 }
