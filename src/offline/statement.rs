@@ -1,12 +1,12 @@
 use crate::model::{
-    Action, ConditionOperator, ConditionOperatorQuantifier, ConditionValue, Effect, OneOrAll,
-    OneOrAny, Principal, QString, Resource, Statement,
+    Action, ConditionOperator, ConditionOperatorQuantifier, ConditionValue, OneOrAll, OneOrAny,
+    Principal, QString, Resource, Statement,
 };
-use crate::offline::operators;
 use crate::offline::request::{Environment, Principal as RequestPrincipal, Request};
-use crate::offline::EvaluationError;
+use crate::offline::{operators, reduce_optional_results, EvaluationResult};
+use crate::offline::{EvaluationError, Source};
 use std::collections::HashMap;
-use tracing::{info, instrument};
+use tracing::{debug, info, instrument};
 
 // ------------------------------------------------------------------------------------------------
 // Public Functions
@@ -17,41 +17,38 @@ pub fn evaluate_statement(
     request: &Request,
     statement: &Statement,
     statement_index: i32,
-) -> Result<Option<Effect>, EvaluationError> {
-    let mut effects: Vec<Option<Effect>> = Default::default();
-    let id = statement_id(statement, statement_index);
+) -> Result<Option<EvaluationResult>, EvaluationError> {
+    let mut effect: Option<EvaluationResult> = None;
 
     // >>>>> eval principal
-    effects.push(eval_statement_principal(
-        &request.principal,
-        &statement.principal,
-    ));
+    let result = eval_statement_principal(&request.principal, &statement.principal);
+    if let Some(EvaluationResult::Deny(_, _)) = result {
+        return Ok(result);
+    } else if let Some(EvaluationResult::Allow) = result {
+        effect = result;
+    }
 
     // >>>>> eval action
-    effects.push(eval_statement_action(&request.action, &statement.action));
+    let result = eval_statement_action(&request.action, &statement.action);
+    if let Some(EvaluationResult::Deny(_, _)) = result {
+        return Ok(result);
+    } else if let Some(EvaluationResult::Allow) = result {
+        effect = result;
+    }
 
     // >>>>> eval resource
-    effects.push(eval_statement_resource(
-        &request.resource,
-        &statement.resource,
-    ));
+    let result = eval_statement_resource(&request.resource, &statement.resource);
+    if let Some(EvaluationResult::Deny(_, _)) = result {
+        return Ok(result);
+    } else if let Some(EvaluationResult::Allow) = result {
+        effect = result;
+    }
 
     // >>>>> eval conditions
-    effects.push(eval_statement_conditions(
-        &request.environment,
-        &statement.condition,
-    )?);
-
-    // collapse result
-    let effect = if effects.contains(&Some(Effect::Deny)) {
-        Some(Effect::Deny)
-    } else if effects.contains(&Some(Effect::Allow)) {
-        Some(Effect::Allow)
-    } else {
-        None
-    };
-    info!("Returning statement {} effect {:?}", id, &effect);
-    Ok(effect)
+    match eval_statement_conditions(&request.environment, &statement.condition) {
+        Ok(None) => Ok(effect),
+        result @ _ => result,
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -69,26 +66,32 @@ fn statement_id(statement: &Statement, statement_index: i32) -> String {
 fn eval_statement_principal(
     request_principal: &Option<RequestPrincipal>,
     statement_principal: &Option<Principal>,
-) -> Option<Effect> {
+) -> Option<EvaluationResult> {
     let effect = if let Some(principal) = request_principal {
         match statement_principal {
             None => None,
             Some(Principal::Principal(ps)) => {
                 if let Some(p) = ps.get(&principal.principal_type) {
                     match p {
-                        OneOrAny::Any => Some(Effect::Allow),
+                        OneOrAny::Any => Some(EvaluationResult::Allow),
                         OneOrAny::One(v) => {
-                            if v == &principal.identifier {
-                                Some(Effect::Allow)
+                            if string_match(&principal.identifier, v) {
+                                Some(EvaluationResult::Allow)
                             } else {
-                                Some(Effect::Deny)
+                                Some(EvaluationResult::Deny(
+                                    Source::Principal,
+                                    "string_match".to_string(),
+                                ))
                             }
                         }
                         OneOrAny::AnyOf(vs) => {
-                            if vs.contains(&principal.identifier) {
-                                Some(Effect::Allow)
+                            if contains_match(&principal.identifier, vs) {
+                                Some(EvaluationResult::Allow)
                             } else {
-                                Some(Effect::Deny)
+                                Some(EvaluationResult::Deny(
+                                    Source::Principal,
+                                    "contains_match".to_string(),
+                                ))
                             }
                         }
                     }
@@ -99,19 +102,26 @@ fn eval_statement_principal(
             Some(Principal::NotPrincipal(ps)) => {
                 if let Some(p) = ps.get(&principal.principal_type) {
                     match p {
-                        OneOrAny::Any => Some(Effect::Deny),
+                        OneOrAny::Any => Some(EvaluationResult::Deny(
+                            Source::NotPrincipal,
+                            "any".to_string(),
+                        )),
                         OneOrAny::One(v) => {
-                            if v == &principal.identifier {
-                                Some(Effect::Deny)
+                            if string_match(&principal.identifier, v) {
+                                Some(EvaluationResult::Deny(
+                                    Source::NotPrincipal,
+                                    "string_match".to_string(),
+                                ))
                             } else {
-                                Some(Effect::Allow)
+                                Some(EvaluationResult::Allow)
                             }
                         }
                         OneOrAny::AnyOf(vs) => {
-                            if vs.contains(&principal.identifier) {
-                                Some(Effect::Deny)
+                            if contains_match(&principal.identifier, vs) {
+                                Some(EvaluationResult::Deny)
+                                    < (Source::NotPrincipal, "contains_match".to_string())
                             } else {
-                                Some(Effect::Allow)
+                                Some(EvaluationResult::Allow)
                             }
                         }
                     }
@@ -131,39 +141,58 @@ fn eval_statement_principal(
 }
 
 #[instrument]
-fn eval_statement_action(request_action: &QString, statement_action: &Action) -> Option<Effect> {
+fn eval_statement_action(
+    request_action: &QString,
+    statement_action: &Action,
+) -> Option<EvaluationResult> {
     let effect = match statement_action {
         Action::Action(a) => match a {
-            OneOrAny::Any => Some(Effect::Allow),
+            OneOrAny::Any => Some(EvaluationResult::Allow),
             OneOrAny::One(v) => {
-                if v == request_action {
-                    Some(Effect::Allow)
+                if string_match(&request_action.to_string(), &v.to_string()) {
+                    Some(EvaluationResult::Allow)
                 } else {
-                    Some(Effect::Deny)
+                    debug!(
+                        target = "eval",
+                        "action: {} ≈ {} → false", request_action, v
+                    );
+                    Some(EvaluationResult::Deny)
                 }
             }
             OneOrAny::AnyOf(vs) => {
-                if vs.contains(request_action) {
-                    Some(Effect::Allow)
+                if contains_qmatch(&request_action.to_string(), vs) {
+                    Some(EvaluationResult::Allow)
                 } else {
-                    Some(Effect::Deny)
+                    debug!(
+                        target = "eval",
+                        "action: {:?} ≈ {} → false", vs, request_action
+                    );
+                    Some(EvaluationResult::Deny)
                 }
             }
         },
         Action::NotAction(a) => match a {
-            OneOrAny::Any => Some(Effect::Deny),
+            OneOrAny::Any => Some(EvaluationResult::Deny),
             OneOrAny::One(v) => {
-                if v == request_action {
-                    Some(Effect::Deny)
+                if string_match(&request_action.to_string(), &v.to_string()) {
+                    debug!(
+                        target = "eval",
+                        "action: {} ≉ {} → false", request_action, v
+                    );
+                    Some(EvaluationResult::Deny)
                 } else {
-                    Some(Effect::Allow)
+                    Some(EvaluationResult::Allow)
                 }
             }
             OneOrAny::AnyOf(vs) => {
-                if vs.contains(request_action) {
-                    Some(Effect::Deny)
+                if contains_qmatch(&request_action.to_string(), vs) {
+                    debug!(
+                        target = "eval",
+                        "action: {:?} ≉ {} → false", vs, request_action
+                    );
+                    Some(EvaluationResult::Deny)
                 } else {
-                    Some(Effect::Allow)
+                    Some(EvaluationResult::Allow)
                 }
             }
         },
@@ -176,39 +205,55 @@ fn eval_statement_action(request_action: &QString, statement_action: &Action) ->
 fn eval_statement_resource(
     request_resource: &String,
     statement_resource: &Resource,
-) -> Option<Effect> {
+) -> Option<EvaluationResult> {
     let effect = match statement_resource {
         Resource::Resource(a) => match a {
-            OneOrAny::Any => Some(Effect::Allow),
+            OneOrAny::Any => Some(EvaluationResult::Allow),
             OneOrAny::One(v) => {
-                if v == request_resource {
-                    Some(Effect::Allow)
+                if resource_match(request_resource, v) {
+                    Some(EvaluationResult::Allow)
                 } else {
-                    Some(Effect::Deny)
+                    println!(
+                        //target = "eval",
+                        "resource: {} ≈ {} → false", request_resource, v
+                    );
+                    Some(EvaluationResult::Deny)
                 }
             }
             OneOrAny::AnyOf(vs) => {
-                if vs.contains(request_resource) {
-                    Some(Effect::Allow)
+                if contains_resource(request_resource, vs) {
+                    Some(EvaluationResult::Allow)
                 } else {
-                    Some(Effect::Deny)
+                    println!(
+                        //target = "eval",
+                        "resource: {:?} ≈ {} → false", vs, request_resource
+                    );
+                    Some(EvaluationResult::Deny)
                 }
             }
         },
         Resource::NotResource(a) => match a {
-            OneOrAny::Any => Some(Effect::Deny),
+            OneOrAny::Any => Some(EvaluationResult::Deny),
             OneOrAny::One(v) => {
-                if v == request_resource {
-                    Some(Effect::Deny)
+                if resource_match(request_resource, v) {
+                    println!(
+                        //target = "eval",
+                        "resource: {} ≉ {} → false", request_resource, v
+                    );
+                    Some(EvaluationResult::Deny)
                 } else {
-                    Some(Effect::Allow)
+                    Some(EvaluationResult::Allow)
                 }
             }
             OneOrAny::AnyOf(vs) => {
-                if vs.contains(request_resource) {
-                    Some(Effect::Deny)
+                if contains_resource(request_resource, vs) {
+                    println!(
+                        //target = "eval",
+                        "resource: {:?} ≉ {} → false", vs, request_resource
+                    );
+                    Some(EvaluationResult::Deny)
                 } else {
-                    Some(Effect::Allow)
+                    Some(EvaluationResult::Allow)
                 }
             }
         },
@@ -219,38 +264,23 @@ fn eval_statement_resource(
     );
     effect
 }
-
 #[instrument]
 fn eval_statement_conditions(
     request_environment: &Environment,
     statement_conditions: &Option<
         HashMap<ConditionOperator, HashMap<QString, OneOrAll<ConditionValue>>>,
     >,
-) -> Result<Option<Effect>, EvaluationError> {
+) -> Result<Option<EvaluationResult>, EvaluationError> {
     let result = if let Some(conditions) = statement_conditions {
-        let (effects, errors): (
-            Vec<Result<Option<Effect>, EvaluationError>>,
-            Vec<Result<Option<Effect>, EvaluationError>>,
+        let (mut effects, mut errors): (
+            Vec<Result<Option<EvaluationResult>, EvaluationError>>,
+            Vec<Result<Option<EvaluationResult>, EvaluationError>>,
         ) = conditions
             .iter()
             .map(|(op, vs)| eval_statement_condition_op(request_environment, op, vs))
             .flatten()
             .partition(|r| r.is_ok());
-        if !errors.is_empty() {
-            Err(EvaluationError::Errors(
-                errors
-                    .iter()
-                    .map(|r| r.as_ref().err().unwrap())
-                    .cloned()
-                    .collect(),
-            ))
-        } else if effects.contains(&Ok(Some(Effect::Deny))) {
-            Ok(Some(Effect::Deny))
-        } else if effects.contains(&Ok(Some(Effect::Allow))) {
-            Ok(Some(Effect::Allow))
-        } else {
-            Ok(None)
-        }
+        reduce_optional_results(&mut effects, &mut errors)
     } else {
         Ok(None)
     };
@@ -262,9 +292,9 @@ fn eval_statement_condition_op(
     request_environment: &Environment,
     condition_operator: &ConditionOperator,
     condition_values: &HashMap<QString, OneOrAll<ConditionValue>>,
-) -> Vec<Result<Option<Effect>, EvaluationError>> {
+) -> Vec<Result<Option<EvaluationResult>, EvaluationError>> {
     info!("Statement condition, operator {:?}", condition_operator);
-    let results: Vec<Result<Option<Effect>, EvaluationError>> = condition_values
+    let results: Vec<Result<Option<EvaluationResult>, EvaluationError>> = condition_values
         .iter()
         .map(|(key, values)| {
             eval_statement_condition_key(request_environment, condition_operator, key, values)
@@ -279,11 +309,11 @@ fn eval_statement_condition_key(
     condition_operator: &ConditionOperator,
     condition_key: &QString,
     condition_values: &OneOrAll<ConditionValue>,
-) -> Result<Option<Effect>, EvaluationError> {
+) -> Result<Option<EvaluationResult>, EvaluationError> {
     match request_environment.get(condition_key) {
         None => {
             if condition_operator.if_exists {
-                Ok(Some(Effect::Allow))
+                Ok(Some(EvaluationResult::Allow))
             } else {
                 Ok(None)
             }
@@ -306,10 +336,65 @@ fn eval_statement_condition_key(
     }
 }
 
-fn bool_effect(result: bool) -> Option<Effect> {
-    if result {
-        Some(Effect::Allow)
+#[inline]
+fn string_match(lhs: &str, rhs: &str) -> bool {
+    if rhs.ends_with('*') {
+        lhs.starts_with(&rhs[0..rhs.len() - 1])
     } else {
-        Some(Effect::Deny)
+        lhs == rhs
+    }
+}
+
+#[inline]
+fn contains_match(lhs: &str, rhs: &Vec<String>) -> bool {
+    rhs.iter().any(|r| string_match(lhs, r))
+}
+
+#[inline]
+fn contains_qmatch(lhs: &str, rhs: &Vec<QString>) -> bool {
+    rhs.iter().any(|r| string_match(lhs, &r.to_string()))
+}
+
+#[inline]
+fn resource_match(lhs: &String, rhs: &String) -> bool {
+    let lhs = resource_split(lhs);
+    let rhs = resource_split(rhs);
+    lhs.iter()
+        .enumerate()
+        .map(|(i, lhs)| string_match(lhs, rhs.get(i).unwrap()))
+        .all(|v| v)
+}
+
+fn resource_split(lhs: &String) -> Vec<String> {
+    let splits: Vec<String> = lhs.split(':').map(|s| s.to_string()).collect();
+    if splits.len() < 6 {
+        Vec::new()
+    } else if splits.len() == 6 {
+        if splits.get(0).unwrap() == "arn" {
+            splits[1..].to_vec()
+        } else {
+            Vec::new()
+        }
+    } else {
+        if splits.get(0).unwrap() == "arn" {
+            let mut splits = splits[1..5].to_vec();
+            splits.push(splits[6..].join(":"));
+            splits
+        } else {
+            Vec::new()
+        }
+    }
+}
+
+#[inline]
+fn contains_resource(lhs: &String, rhs: &Vec<String>) -> bool {
+    rhs.iter().any(|r| resource_match(lhs, r))
+}
+
+fn bool_effect(result: bool) -> Option<EvaluationResult> {
+    if result {
+        Some(EvaluationResult::Allow)
+    } else {
+        Some(EvaluationResult::Deny)
     }
 }

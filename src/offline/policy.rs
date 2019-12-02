@@ -1,7 +1,7 @@
-use crate::model::{Effect, OneOrAll, Policy};
+use crate::model::{OneOrAll, Policy};
 use crate::offline::request::Request;
 use crate::offline::statement::evaluate_statement;
-use crate::offline::EvaluationError;
+use crate::offline::{EvaluationError, EvaluationResult};
 use tracing::{error, info, instrument};
 
 // ------------------------------------------------------------------------------------------------
@@ -13,7 +13,7 @@ pub fn evaluate_policy(
     request: &Request,
     policy: &Policy,
     policy_index: i32,
-) -> Result<Effect, EvaluationError> {
+) -> Result<Option<EvaluationResult>, EvaluationError> {
     let id = policy_id(policy, policy_index);
     let result = match &policy.statement {
         OneOrAll::One(statement) => match evaluate_statement(request, statement, 0) {
@@ -24,7 +24,7 @@ pub fn evaluate_policy(
             Ok(effect) => effect,
         },
         OneOrAll::All(statements) => {
-            let results: Vec<Option<Effect>> = statements
+            let mut results: Vec<Option<EvaluationResult>> = statements
                 .iter()
                 .enumerate()
                 .filter_map(|(idx, statement)| {
@@ -39,21 +39,26 @@ pub fn evaluate_policy(
                     }
                 })
                 .collect();
-            if results.contains(&Some(Effect::Deny)) {
-                Some(Effect::Deny)
-            } else if results.contains(&Some(Effect::Allow)) {
-                Some(Effect::Allow)
-            } else {
-                None
-            }
+            results.drain(0..).fold::<Option<EvaluationResult>>(
+                Some(EvaluationResult::None),
+                |acc, result| match result {
+                    Ok(Some(EvaluationResult::Allow)) => {
+                        if let EvaluationResult::Deny(_, _) = acc {
+                            acc
+                        } else {
+                            Some(EvaluationResult::Allow)
+                        }
+                    }
+                    Ok(Some(EvaluationResult::Deny(s, m))) => {
+                        Some(EvaluationResult::Deny(s.clone(), m.clone()))
+                    }
+                    _ => acc,
+                },
+            )
         }
     };
-    let effect = match result {
-        None => Effect::Deny,
-        Some(effect) => effect,
-    };
-    info!("Returning policy {} effect {:?}", id, effect);
-    Ok(effect)
+    info!("Returning policy {} effect {:?}", id, result);
+    Ok(result)
 }
 
 // ------------------------------------------------------------------------------------------------

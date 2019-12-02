@@ -11,3 +11,4 @@ Cargo.lock
 
 # IntelliJ IDEA project files
 /.idea/
+/aws-iam-model.iml

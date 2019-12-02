@@ -57,6 +57,13 @@ where
 }
 
 ///
+/// Read a `Policy` document from a string.
+///
+pub fn read_from_string(s: &str) -> Result<Policy, Error> {
+    read_from_reader(s.as_bytes())
+}
+
+///
 /// Write the `policy` object to a file at `path`, this will create a file if it does
 /// not exist and overwrite any file if it exists.
 ///
