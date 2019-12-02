@@ -18,9 +18,8 @@ From [AWS Identity and Access Management Documentation](https://docs.aws.amazon.
 
 This crate provides a set of types that can be used to serialize and deserialize IAM Policy
 documents. For a simpler experience creating documents a [`builder`](model/builder/index.html)
-module provides a more _fluent_ method for construction. For understanding policies the
-[`report`](report/index.html) module provides a set of visitor traits that can be used with the
-[`walk_policy`](report/fn.walk_policy.html) function to walk a parsed policy value.
+module provides a more _fluent_ method for construction. The [`io`](io/index.html) module
+provides basic support for reading and writing JSON files.
 
 # Usage
 
@@ -83,11 +82,14 @@ println!("{}", policy.to_string());
 
 # Features
 
-The following
+The following features are supported by this crate and can be included as needed. By default the
+crate only provides an in-memory data model with Serde support for reading and writing to the
+standard JSON representation.
 
 * `command_line` - provides a command line tool, `policy` that can verify and evaluate existing
   policy documents and create new ones from a set of templates.
-* `document` - produces formatted documentation for a policy.
+* `document` - produces formatted documentation for a policy. This can be in the form of Markdown
+  or LaTeX and would usually be used to document a policy template for others to follow.
 * `offline_eval` - provides a simple, by which we mean incomplete, evaluation of a policy  using
   a request object to match. This is useful but not sufficient for testing policies.
 * `service_config` - adds to the verification of policies by storing service-specific configuration
@@ -125,6 +127,7 @@ pub mod io;
 
 pub mod model;
 
+#[cfg(feature = "document")]
 pub mod document;
 
 #[cfg(feature = "offline_eval")]

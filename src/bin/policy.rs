@@ -279,11 +279,11 @@ fn verify_file_result(
                         Format::Rust => println!("{:#?}", policy),
                         Format::Markdown => {
                             let mut generator = MarkdownGenerator::default();
-                            document::walk_policy(&policy, &mut generator);
+                            document::visitor::walk_policy(&policy, &mut generator);
                         }
                         Format::Latex => {
                             let mut generator = LatexGenerator::default();
-                            document::walk_policy(&policy, &mut generator);
+                            document::visitor::walk_policy(&policy, &mut generator);
                         }
                     }
                 }

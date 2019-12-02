@@ -21,14 +21,17 @@ pub type Environment = HashMap<QString, ConditionValue>;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Request {
     /// An optional request identifier.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub request_id: Option<String>,
     /// The principal making the request.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub principal: Option<Principal>,
     /// The action being requested.
     pub action: QString,
     /// The resource to which the action is applied.
     pub resource: String,
     /// Additional properties which may be used in conditions.
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
     pub environment: Environment,
 }
 

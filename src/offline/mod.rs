@@ -1,8 +1,12 @@
 /*!
-Support for a simplistic offline evaluation for policies, useful for policy testing. Requires
-feature `offline_eval`.
+Support for a simplistic offline evaluation for policies, useful for policy testing. Enablec by
+the feature `offline_eval`.
 
-TBD
+This module provides a simple method for testing a policy by creating one or more
+[`Request`](request/struct.Request.html) objects and evaluating the policy for the given request.
+This implementation is not exhaustive but for those elements it implements it should be a
+reasonable approximation. Note that the value returned from [`evaluate`](fn.evaluate.html) also
+contains information regarding the reason for any decision, useful for debugging.
 
 # Example
 
@@ -40,6 +44,25 @@ let request = Request {
 };
 
 println!("result: {:?}", evaluate(&request, &policy).expect("An error occurred"));
+```
+
+# Request Serialization
+
+The `Request` structure supports Serde serialization and deserialization to supporting testing with
+pre-defined example requests. The following is an example serialization of the request composed
+in the example above.
+
+```json
+{
+  "request_id": "test_deny_resource_string_match",
+  "action": "dynamodb:read",
+  "resource": "arn:aws:dynamodb:us-east-2:123456789012:table/NotBooks",
+  "environment": {
+    "aws:RequestedRegion": "us-east-1",
+    "aws:SecureTransport": true,
+    "aws:EpochTime": 1000
+  }
+}
 ```
 */
 
@@ -265,6 +288,17 @@ mod tests {
             resource: String::from(resource),
             environment,
         }
+    }
+
+    #[test]
+    fn test_serialize_resource() {
+        let request = make_request(
+            "test_deny_resource_string_match",
+            None,
+            "dynamodb:read",
+            "arn:aws:dynamodb:us-east-2:123456789012:table/NotBooks",
+        );
+        println!("{}", serde_json::to_string_pretty(&request).unwrap());
     }
 
     #[test]
