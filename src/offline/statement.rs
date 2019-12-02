@@ -57,13 +57,6 @@ pub fn evaluate_statement(
 // Private Functions
 // ------------------------------------------------------------------------------------------------
 
-fn statement_id(statement: &Statement, statement_index: i32) -> String {
-    match &statement.sid {
-        Some(id) => id.to_string(),
-        None => format!("[{}]", statement_index),
-    }
-}
-
 #[instrument]
 fn eval_statement_principal(
     request_principal: &Option<RequestPrincipal>,
@@ -304,7 +297,7 @@ fn eval_statement_conditions(
     >,
 ) -> Result<PartialEvaluationResult, EvaluationError> {
     let result = if let Some(conditions) = statement_conditions {
-        let mut results = conditions
+        let results = conditions
             .iter()
             .map(|(op, vs)| eval_statement_condition_op(request_environment, op, vs))
             .flatten()

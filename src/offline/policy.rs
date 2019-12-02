@@ -18,7 +18,7 @@ pub fn evaluate_policy(
     let result = match &policy.statement {
         OneOrAll::One(statement) => evaluate_statement(request, statement, 0),
         OneOrAll::All(statements) => {
-            let mut results: Result<Vec<PartialEvaluationResult>, EvaluationError> = statements
+            let results: Result<Vec<PartialEvaluationResult>, EvaluationError> = statements
                 .iter()
                 .enumerate()
                 .map(|(idx, statement)| evaluate_statement(request, statement, idx as i32))

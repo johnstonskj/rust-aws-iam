@@ -78,13 +78,22 @@ pub enum EvaluationError {
 ///
 #[derive(Clone, Debug, PartialEq)]
 pub enum Source {
+    /// No explicit allow or deny occured, therefore the default denial was returned.
     Default,
+    /// The *is-a* principal test failed.
     Principal,
+    /// The *is-not-a* principal test failed.
     NotPrincipal,
+    /// The *is-a* action test failed.
     Action,
+    /// The *is-not-a* action test failed.
     NotAction,
+    /// The *is-a* resource test failed.
     Resource,
+    /// The *is-not-a* resource test failed.
     NotResource,
+    /// The *match* a condition failed; to help narrow down the actual failure the condition
+    /// operator and key are included.
     Condition(ConditionOperator, QString),
 }
 
@@ -94,7 +103,10 @@ pub enum Source {
 ///
 #[derive(Debug, PartialEq)]
 pub enum EvaluationResult {
+    /// Evaluation resulted in an *allow* effect.
     Allow,
+    /// Evaluation resulted in an *deny* effect. In this case the source represents a statement
+    /// component that caused the denial and the string represents an accompanying message.
     Deny(Source, String),
 }
 
@@ -119,7 +131,7 @@ pub fn evaluate_all(
     request: &Request,
     policies: &[&Policy],
 ) -> Result<EvaluationResult, EvaluationError> {
-    let mut results: Result<Vec<PartialEvaluationResult>, EvaluationError> = policies
+    let results: Result<Vec<PartialEvaluationResult>, EvaluationError> = policies
         .iter()
         .enumerate()
         .map(|(idx, policy)| evaluate_policy(request, policy, idx as i32))
