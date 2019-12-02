@@ -81,12 +81,30 @@ let policy = Policy {
 println!("{}", policy.to_string());
 ```
 
-*/
+# Features
 
+The following
+
+* `command_line` - provides a command line tool, `policy` that can verify and evaluate existing
+  policy documents and create new ones from a set of templates.
+* `document` - produces formatted documentation for a policy.
+* `offline_eval` - provides a simple, by which we mean incomplete, evaluation of a policy  using
+  a request object to match. This is useful but not sufficient for testing policies.
+* `service_config` - adds to the verification of policies by storing service-specific configuration
+  on actions, resource formats, and condition keys.
+
+The `default` feature includes none of the above. This documentation was built with the following
+features enabled.
+
+*/
+#![cfg_attr(feature = "default", doc = "* default")]
+#![cfg_attr(feature = "command_line", doc = "* command line tool")]
+#![cfg_attr(feature = "document", doc = "* documentation formatters")]
+#![cfg_attr(feature = "offline_eval", doc = "* offline evaluation")]
+#![cfg_attr(feature = "service_config", doc = "* service-specific configuration")]
 // ------------------------------------------------------------------------------------------------
 // Preamble
 // ------------------------------------------------------------------------------------------------
-
 #![warn(
     missing_debug_implementations,
     missing_docs,
@@ -107,7 +125,7 @@ pub mod io;
 
 pub mod model;
 
-pub mod report;
+pub mod document;
 
 #[cfg(feature = "offline_eval")]
 pub mod offline;

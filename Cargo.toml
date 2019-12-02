@@ -17,7 +17,9 @@ path = "src/bin/policy.rs"
 required-features = ["command_line", "offline_eval"]
 
 [features]
-command_line = ["structopt",  "tracing", "tracing-subscriber"]
+default = []
+command_line = ["document", "offline_eval", "structopt", "tracing-subscriber"]
+document = []
 offline_eval = ["tracing"]
 service_config = ["toml"]
 

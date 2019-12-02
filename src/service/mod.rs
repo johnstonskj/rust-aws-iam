@@ -1,5 +1,8 @@
 /*!
-Provides the ability to configure service-specific rules for validation.
+Provides the ability to configure service-specific rules for validation. Requires feature
+`service_config`.
+
+Details TBD.
 */
 use serde::{Deserialize, Serialize};
 

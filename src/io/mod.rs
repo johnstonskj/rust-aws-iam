@@ -1,6 +1,25 @@
 /*!
 Provides basic file read/write functions for policies.
+
+This module wraps basic read and write operations and the relevant Serde serialization and
+deserialization logic. Both read and write functions come in two forms, one which takes a
+file name in the form of a `PathBuf` and one which either takes an implementation of
+`std::io::Read` or `std::io::Write`.
+
+# Example
+
+The following reads a policy document from a JSON file and returns the parsed form.
+
+```rust
+use aws_iam::{io, model::*};
+use std::path::PathBuf;
+
+let policy = io::read_from_file(
+        &PathBuf::from("tests/data/good/example-021.json")
+    ).expect("Error reading file");
+```
 */
+
 use crate::model::Policy;
 use std::fs::OpenOptions;
 use std::io;

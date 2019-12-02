@@ -10,7 +10,6 @@ the circumstances under which a global key is included in the request context, s
 the Availability information for each global condition key.
 
 From [AWS Global Condition Context Keys](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_condition-keys.html).
-
 */
 
 // ------------------------------------------------------------------------------------------------

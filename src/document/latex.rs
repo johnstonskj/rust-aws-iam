@@ -1,5 +1,5 @@
+use crate::document::visitor::*;
 use crate::model::*;
-use crate::report::visitor::*;
 use std::io::{stdout, Write};
 
 // ------------------------------------------------------------------------------------------------

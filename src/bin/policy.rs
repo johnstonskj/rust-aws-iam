@@ -4,10 +4,10 @@ Command-line tool to read and verify policy files and create new from templates.
 #[macro_use]
 extern crate tracing;
 
+use aws_iam::document;
+use aws_iam::document::{LatexGenerator, MarkdownGenerator};
 use aws_iam::io;
 use aws_iam::model::Policy;
-use aws_iam::report;
-use aws_iam::report::{LatexGenerator, MarkdownGenerator};
 use std::error::Error;
 use std::fmt;
 use std::fs::OpenOptions;
@@ -279,11 +279,11 @@ fn verify_file_result(
                         Format::Rust => println!("{:#?}", policy),
                         Format::Markdown => {
                             let mut generator = MarkdownGenerator::default();
-                            report::walk_policy(&policy, &mut generator);
+                            document::walk_policy(&policy, &mut generator);
                         }
                         Format::Latex => {
                             let mut generator = LatexGenerator::default();
-                            report::walk_policy(&policy, &mut generator);
+                            document::walk_policy(&policy, &mut generator);
                         }
                     }
                 }

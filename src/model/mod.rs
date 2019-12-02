@@ -98,7 +98,6 @@ section.
 
 ```
 use aws_iam::model::*;
-use aws_iam::model::builder::*;
 
 let policy = Policy {
     version: Some(Version::V2012),
@@ -116,6 +115,27 @@ let json = serde_json::to_string(&policy);
 assert!(json.is_ok());
 println!("JSON: {:#?}", json);
 ```
+
+Alternatively using the `builder` module we can accomplish the same result with the following.
+
+```
+use aws_iam::model::*;
+use aws_iam::model::builder::*;
+
+let policy: Policy = PolicyBuilder::new()
+    .named("test_simple_access_policy")
+    .evaluate_statement(
+        StatementBuilder::new()
+            .allows()
+            .may_perform_action("s3:ListBucket")
+            .on_resource("arn:aws:s3:::example_bucket")
+    )
+    .into();
+let json = serde_json::to_string(&policy);
+assert!(json.is_ok());
+println!("JSON: {:#?}", json);
+```
+
 */
 
 // ------------------------------------------------------------------------------------------------

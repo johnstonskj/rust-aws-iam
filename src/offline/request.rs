@@ -67,13 +67,12 @@ impl Request {
     }
 
     /// Return the request_id within the request or generate one if it is `None`.
-    pub fn request_id_or_default(&self) -> String {
-        match &self.request_id {
-            Some(id) => id.to_string(),
-            None => Uuid::new_v4()
+    pub fn request_id() -> Option<String> {
+        Some(
+            Uuid::new_v4()
                 .to_hyphenated()
                 .encode_lower(&mut Uuid::encode_buffer())
                 .to_string(),
-        }
+        )
     }
 }
