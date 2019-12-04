@@ -133,8 +133,10 @@ pub enum EvaluationResult {
     Deny(Source, String),
 }
 
+type PartialEvaluationResult = Option<EvaluationResult>;
+
 #[derive(Debug, PartialEq)]
-pub(crate) enum PartialEvaluationResult {
+pub(crate) enum InternalEffect {
     Success,
     Failure { source: Source, message: String },
 }
