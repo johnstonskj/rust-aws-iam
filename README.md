@@ -4,7 +4,7 @@ A Rust crate for dealing with [AWS IAM](https://docs.aws.amazon.com/IAM/latest/U
 Policy resources.
 
 ![MIT License](https://img.shields.io/badge/license-mit-118811.svg)
-![Minimum Rust Version](https://img.shields.io/badge/Min%20Rust-1.38-green.svg)
+![Minimum Rust Version](https://img.shields.io/badge/Min%20Rust-1.40-green.svg)
 [![crates.io](https://img.shields.io/crates/v/aws-iam.svg)](https://crates.io/crates/aws-iam)
 [![docs.rs](https://docs.rs/aws-iam/badge.svg)](https://docs.rs/aws-iam)
 [![travis.ci](https://travis-ci.org/johnstonskj/rust-aws-iam.svg?branch=master)](https://travis-ci.org/johnstonskj/rust-aws-iam)

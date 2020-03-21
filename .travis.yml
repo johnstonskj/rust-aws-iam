@@ -7,7 +7,7 @@ dist: xenial
 rust:
 - stable
 - beta
-- 1.38.0
+- 1.40.0
 - nightly
 
 # Operating systems I want to test
