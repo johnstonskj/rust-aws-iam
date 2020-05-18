@@ -8,6 +8,7 @@ Policy resources.
 [![crates.io](https://img.shields.io/crates/v/aws-iam.svg)](https://crates.io/crates/aws-iam)
 [![docs.rs](https://docs.rs/aws-iam/badge.svg)](https://docs.rs/aws-iam)
 [![travis.ci](https://travis-ci.org/johnstonskj/rust-aws-iam.svg?branch=master)](https://travis-ci.org/johnstonskj/rust-aws-iam)
+[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=johnstonskj/rust-aws-iam)](https://dependabot.com)
 [![GitHub stars](https://img.shields.io/github/stars/johnstonskj/rust-aws-iam.svg)](https://github.com/johnstonskj/rust-aws-iam/stargazers)
 
 ## Model
