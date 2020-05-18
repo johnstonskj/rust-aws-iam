@@ -33,7 +33,7 @@ serde_json = "1.0"
 # Command-Line feature dependencies
 structopt = { optional = true, version = "0.3.3" }
 tracing = { optional = true, version = "0.1.10" }
-tracing-subscriber = { optional = true, version = "0.1.6" }
+tracing-subscriber = { optional = true, version = "0.2.5" }
 
 # Service Config feature dependencies
 toml = { optional = true, version = "0.5" }
