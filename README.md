@@ -8,6 +8,7 @@ Policy resources.
 [![crates.io](https://img.shields.io/crates/v/aws-iam.svg)](https://crates.io/crates/aws-iam)
 [![docs.rs](https://docs.rs/aws-iam/badge.svg)](https://docs.rs/aws-iam)
 ![Build](https://github.com/johnstonskj/rust-aws-iam/workflows/Rust/badge.svg)
+![Audit](https://github.com/johnstonskj/rust-aws-iam/workflows/Security%20audit/badge.svg)
 [![GitHub stars](https://img.shields.io/github/stars/johnstonskj/rust-aws-iam.svg)](https://github.com/johnstonskj/rust-aws-iam/stargazers)
 
 ## Model
