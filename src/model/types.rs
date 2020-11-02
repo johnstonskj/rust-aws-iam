@@ -71,16 +71,17 @@ pub struct Policy {
 ///
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Version {
-    #[serde(rename = "2008-10-17")]
+    #[serde(rename = "2012-10-17")]
     /// This is the current version of the policy language, and you should always
     /// include a Version element and set it to 2012-10-17. Otherwise, you cannot
     /// use features such as policy variables that were introduced with this version.
-    V2008,
-    #[serde(rename = "2012-10-17")]
+    V2012,
+
+    #[serde(rename = "2008-10-17")]
     /// This was an earlier version of the policy language. You might see this
     /// version on older existing policies. Do not use this version for any new
     /// policies or when you update any existing policies.
-    V2012,
+    V2008,
 }
 
 ///
