@@ -101,7 +101,7 @@ pub enum EvaluationError {
 ///
 #[derive(Clone, Debug, PartialEq)]
 pub enum Source {
-    /// No explicit allow or deny occured, therefore the default denial was returned.
+    /// No explicit allow or deny occurred, therefore the default denial was returned.
     Default,
     /// The *is-a* principal test failed.
     Principal,
@@ -134,12 +134,6 @@ pub enum EvaluationResult {
 }
 
 type PartialEvaluationResult = Option<EvaluationResult>;
-
-#[derive(Debug, PartialEq)]
-pub(crate) enum InternalEffect {
-    Success,
-    Failure { source: Source, message: String },
-}
 
 // ------------------------------------------------------------------------------------------------
 // Public Functions
@@ -227,9 +221,7 @@ pub(crate) fn reduce_optional_results(
                     Some(EvaluationResult::Allow)
                 }
             }
-            Some(EvaluationResult::Deny(s, m)) => {
-                Some(EvaluationResult::Deny(s.clone(), m.clone()))
-            }
+            Some(EvaluationResult::Deny(s, m)) => Some(EvaluationResult::Deny(s, m)),
             _ => acc,
         });
     effect_or_none

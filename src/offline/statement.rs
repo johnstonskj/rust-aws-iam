@@ -18,7 +18,7 @@ use tracing::{debug, info, instrument};
 pub fn evaluate_statement(
     request: &Request,
     statement: &Statement,
-    statement_index: i32,
+    _statement_index: i32,
 ) -> Result<PartialEvaluationResult, EvaluationError> {
     let mut effect: Option<EvaluationResult> = None;
 
@@ -49,7 +49,7 @@ pub fn evaluate_statement(
     // >>>>> eval conditions
     match eval_statement_conditions(&request.environment, &statement.condition) {
         Ok(None) => Ok(effect),
-        result @ _ => result,
+        result => result,
     }
 }
 
@@ -212,7 +212,7 @@ fn eval_statement_action(
 
 #[instrument]
 fn eval_statement_resource(
-    request_resource: &String,
+    request_resource: &str,
     statement_resource: &Resource,
 ) -> PartialEvaluationResult {
     let effect = match statement_resource {
@@ -381,7 +381,7 @@ fn contains_qmatch(lhs: &str, rhs: &Vec<QString>) -> bool {
 }
 
 #[inline]
-fn resource_match(lhs: &String, rhs: &String) -> bool {
+fn resource_match(lhs: &str, rhs: &str) -> bool {
     let lhs = resource_split(lhs);
     let rhs = resource_split(rhs);
     lhs.iter()
@@ -390,7 +390,7 @@ fn resource_match(lhs: &String, rhs: &String) -> bool {
         .all(|v| v)
 }
 
-fn resource_split(lhs: &String) -> Vec<String> {
+fn resource_split(lhs: &str) -> Vec<String> {
     let splits: Vec<String> = lhs.split(':').map(|s| s.to_string()).collect();
     if splits.len() < 6 {
         Vec::new()
@@ -400,19 +400,17 @@ fn resource_split(lhs: &String) -> Vec<String> {
         } else {
             Vec::new()
         }
+    } else if splits.get(0).unwrap() == "arn" {
+        let mut splits = splits[1..5].to_vec();
+        splits.push(splits[6..].join(":"));
+        splits
     } else {
-        if splits.get(0).unwrap() == "arn" {
-            let mut splits = splits[1..5].to_vec();
-            splits.push(splits[6..].join(":"));
-            splits
-        } else {
-            Vec::new()
-        }
+        Vec::new()
     }
 }
 
 #[inline]
-fn contains_resource(lhs: &String, rhs: &Vec<String>) -> bool {
+fn contains_resource(lhs: &str, rhs: &Vec<String>) -> bool {
     rhs.iter().any(|r| resource_match(lhs, r))
 }
 

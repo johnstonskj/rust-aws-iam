@@ -64,7 +64,7 @@ impl QString {
                 qualifier: None,
                 value,
             },
-            _ => panic!("Invalid format for value"),
+            _ => panic!("Invalid format for value: '{}'", value),
         }
     }
 
@@ -184,9 +184,7 @@ fn validate_part(part: &str) -> Result<String, QStringError> {
     lazy_static! {
         static ref ID: Regex = Regex::new(r"^(\*|[a-zA-Z\*][a-zA-Z0-9\-_\*/]*)$").unwrap();
     }
-    if part.is_empty() {
-        Ok(part.to_string())
-    } else if ID.is_match(part) {
+    if part.is_empty() || ID.is_match(part) {
         Ok(part.to_string())
     } else {
         Err(QStringError::ComponentInvalid)

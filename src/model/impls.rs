@@ -244,7 +244,7 @@ impl ConditionOperator {
     pub fn new(base: GlobalConditionOperator) -> Self {
         match base {
             GlobalConditionOperator::Other(other) => Self::new_other(other),
-            base @ _ => ConditionOperator {
+            base => ConditionOperator {
                 quantifier: None,
                 operator: base,
                 if_exists: false,
@@ -317,6 +317,7 @@ impl FromStr for ConditionOperator {
             return Err(ConditionOperatorError::EmptyString);
         }
         // TODO: regex this.
+        #[allow(clippy::clone_double_ref)]
         let mut s = s.clone();
         let quantifier = if s.starts_with("ForAllValues:") {
             s = &s[13..];
@@ -327,7 +328,7 @@ impl FromStr for ConditionOperator {
         } else {
             None
         };
-        if s.contains(":") {
+        if s.contains(':') {
             return Err(ConditionOperatorError::InvalidQuantifier);
         }
         let only_if_exists = if s.ends_with("IfExists") {

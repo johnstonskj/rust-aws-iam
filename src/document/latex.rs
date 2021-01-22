@@ -60,19 +60,18 @@ impl PolicyVisitor for LatexGenerator {
         if self.stand_alone {
             writeln!(
                 self.writer.as_mut(),
-                "{}",
-                r#"\documentclass[10pt,letterpaper]{article}
+                r#"\documentclass[10pt,letterpaper]{{article}}
 
-\usepackage[T1]{fontenc}
-\usepackage{libertine}
-\usepackage{amsfonts}
+\usepackage[T1]{{fontenc}}
+\usepackage{{libertine}}
+\usepackage{{amsfonts}}
 
-\usepackage{sectsty}
-\sectionfont{\LARGE\normalfont\sffamily}
-\subsectionfont{\Large\normalfont\sffamily}
-\subsubsectionfont{\large\normalfont\sffamily}
+\usepackage{{sectsty}}
+\sectionfont{{\LARGE\normalfont\sffamily}}
+\subsectionfont{{\Large\normalfont\sffamily}}
+\subsubsectionfont{{\large\normalfont\sffamily}}
 
-\begin{document}
+\begin{{document}}
 "#
             )
             .expect(IO_ERROR_MSG);
@@ -112,26 +111,24 @@ impl PolicyVisitor for LatexGenerator {
         if self.stand_alone {
             writeln!(
                 self.writer.as_mut(),
-                "{}",
                 r#"\appendix
+\section{{Operators}}
 
-\section{Operators}
-
-\begin{tabular}{|c|l|p{3.25in}|}
+\begin{{tabular}}{{|c|l|p{{3.25in}}|}}
   \hline
-  \textbf{Symbol} & \textbf{Operation} & \textbf{Applies To} \\
+  \textbf{{Symbol}} & \textbf{{Operation}} & \textbf{{Applies To}} \\
   \hline
-  $=$ & equality & strings, numbers, dates, \textsc{ip} addresses, \textsc{arn}\small{s}, principal identifiers, actions, resources \\
+  $=$ & equality & strings, numbers, dates, \textsc{{ip}} addresses, \textsc{{arn}}\small{{s}}, principal identifiers, actions, resources \\
   \hline
-  $\neq$ & not equality & strings, numbers, dates, \textsc{ip} addresses, \textsc{arn}\small{s}, principal identifiers, actions, resources \\
+  $\neq$ & not equality & strings, numbers, dates, \textsc{{ip}} addresses, \textsc{{arn}}\small{{s}}, principal identifiers, actions, resources \\
   \hline
   $\equiv$ & case insensitive equality & strings \\
   \hline
   $\not\equiv$ & case insensitive not equality & strings \\
   \hline
-  $\approx$ & \textit{likeness} & strings, \textsc{arn}\small{s}, principal identifiers, actions, resources \\
+  $\approx$ & \textit{{likeness}} & strings, \textsc{{arn}}\small{{s}}, principal identifiers, actions, resources \\
   \hline
-  $\not\approx$ & not \textit{likeness} & strings, \textsc{arn}\small{s}, principal identifiers, actions, resources \\
+  $\not\approx$ & not \textit{{likeness}} & strings, \textsc{{arn}}\small{{s}}, principal identifiers, actions, resources \\
   \hline
   $<$ & less than & numbers, dates \\
   \hline
@@ -141,20 +138,20 @@ impl PolicyVisitor for LatexGenerator {
   \hline
   $\geq$ & greater than or equal to & numbers, dates \\
   \hline
-  $?$ & is null & strings, numbers, dates, \textsc{ip} addresses, \textsc{arn}\small{s} \\
+  $?$ & is null & strings, numbers, dates, \textsc{{ip}} addresses, \textsc{{arn}}\small{{s}} \\
   \hline
   $\in$ & set inclusion & strings, numbers, principal identifiers, actions, resources \\
   \hline
   $\notin$ & not set inclusion & strings, numbers, principal identifiers, actions, resources \\
   \hline
-\end{tabular}
+\end{{tabular}}
 
 \hfill
 
-\noindent Also not our use of the symbol $\mathbb{U}$, defined as \textit{the set of all elements being considered},
-in the expression $\in \mathbb{U}$ representing the universal wildcard ``*''.
+\noindent Also not our use of the symbol $\mathbb{{U}}$, defined as \textit{{the set of all elements being considered}},
+in the expression $\in \mathbb{{U}}$ representing the universal wildcard ``*''.
 
-\end{document}
+\end{{document}}
 "#
             )
             .expect(IO_ERROR_MSG);
@@ -369,7 +366,7 @@ fn any(negated: bool) -> String {
     )
 }
 
-fn string_or_any(v: &String, negated: bool) -> String {
+fn string_or_any(v: &str, negated: bool) -> String {
     if v == "*" {
         any(negated)
     } else if v.contains('*') {

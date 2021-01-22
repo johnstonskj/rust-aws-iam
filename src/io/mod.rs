@@ -37,7 +37,7 @@ use std::path::PathBuf;
 pub enum Error {
     /// Wrapper for any IO error that occurs during reading.
     ReadingFile(io::Error),
-    /// Wrapper for any IO error that occurs duriug writing.
+    /// Wrapper for any IO error that occurs during writing.
     WritingFile(io::Error),
     /// Wrapper for Serde error serializing object to JSON.
     SerializingPolicy(String),
@@ -107,7 +107,7 @@ where
 {
     let writer = BufWriter::new(writer);
     match serde_json::to_writer_pretty(writer, policy) {
-        Ok(policy) => Ok(policy),
+        Ok(_) => Ok(()),
         Err(e) => Err(Error::SerializingPolicy(e.to_string())),
     }
 }

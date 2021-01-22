@@ -143,7 +143,7 @@ impl From<&mut PolicyBuilder> for Policy {
             statement: match pb.statements.len() {
                 0 => panic!("no statements!"),
                 1 => OneOrAll::One(pb.statements.remove(0)),
-                _ => OneOrAll::All(pb.statements.drain(0..).map(|sb| sb).collect()),
+                _ => OneOrAll::All(pb.statements.drain(0..).collect()),
             },
         }
     }
@@ -385,7 +385,7 @@ impl From<&mut StatementBuilder> for Statement {
                             match v.len() {
                                 0 => OneOrAny::Any,
                                 1 => OneOrAny::One(v.remove(0)),
-                                _ => OneOrAny::AnyOf(v.drain(0..).map(|s| s).collect()),
+                                _ => OneOrAny::AnyOf(v.drain(0..).collect()),
                             },
                         )
                     })
@@ -401,7 +401,7 @@ impl From<&mut StatementBuilder> for Statement {
         let action_inner = match sb.actions.len() {
             0 => OneOrAny::Any,
             1 => OneOrAny::One(sb.actions.remove(0)),
-            _ => OneOrAny::AnyOf(sb.actions.drain(0..).map(|s| s).collect()),
+            _ => OneOrAny::AnyOf(sb.actions.drain(0..).collect()),
         };
         let action = match sb.a_direction {
             None => panic!("must have an action"),
@@ -412,7 +412,7 @@ impl From<&mut StatementBuilder> for Statement {
         let resource_inner = match sb.resources.len() {
             0 => OneOrAny::Any,
             1 => OneOrAny::One(sb.resources.remove(0)),
-            _ => OneOrAny::AnyOf(sb.resources.drain(0..).map(|s| s).collect()),
+            _ => OneOrAny::AnyOf(sb.resources.drain(0..).collect()),
         };
         let resource = match sb.r_direction {
             None => panic!("must have a resource"),
