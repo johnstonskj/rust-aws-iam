@@ -231,9 +231,7 @@ impl ConditionVisitor for MarkdownGenerator {
                 }
                 OneOrAll::All(vs) => format!(
                     "{:?}",
-                    vs.iter()
-                        .map(condition_value)
-                        .collect::<Vec<String>>()
+                    vs.iter().map(condition_value).collect::<Vec<String>>()
                 ),
             }
         )
