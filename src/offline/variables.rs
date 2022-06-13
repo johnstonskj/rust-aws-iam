@@ -32,7 +32,7 @@ pub fn expand_string(
         let key = QString::from_str(key)
             .map_err(|_| EvaluationError::InvalidVariableName(key.to_string()))?;
         match environment.get(&key) {
-            Some(ConditionValue::String(v)) => output.push_str(&v),
+            Some(ConditionValue::String(v)) => output.push_str(v),
             None => return Err(EvaluationError::UnknownVariableName(key.to_string())),
             _ => return Err(EvaluationError::ExpectingVariableType("String".to_string())),
         };
