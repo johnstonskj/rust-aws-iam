@@ -27,7 +27,7 @@ pub trait PolicyVisitor {
     fn start(&mut self) {}
 
     /// Called by the walker to allow handling of the `id` component of the Policy.
-    fn id(&mut self, i: &String) {}
+    fn id(&mut self, i: &str) {}
 
     /// Called by the walker to allow handling of the `version` component of the Policy.
     fn version(&mut self, v: &Version) {}
@@ -61,7 +61,7 @@ pub trait StatementVisitor {
     fn start(&mut self) {}
 
     /// Called by the walker to allow handling of the `sid` component of the Statement.
-    fn sid(&mut self, s: &String) {}
+    fn sid(&mut self, s: &str) {}
 
     /// Called by the walker to allow handling of the `effect` component of the Statement.
     fn effect(&mut self, e: &Effect) {}

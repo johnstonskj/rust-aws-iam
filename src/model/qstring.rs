@@ -3,11 +3,9 @@ Provides a namespace-qualified string.
 */
 
 use regex::Regex;
-use serde::export::fmt::Error;
-use serde::export::Formatter;
 use serde::{de, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt;
 use std::fmt::Display;
+use std::fmt::{self, Error, Formatter};
 use std::str::FromStr;
 use std::string::ToString;
 
@@ -159,7 +157,7 @@ impl<'de> Visitor<'de> for QStringVisitor {
     where
         E: de::Error,
     {
-        QString::from_str(&value).map_err(de::Error::custom)
+        QString::from_str(value).map_err(de::Error::custom)
     }
 
     fn visit_string<E>(self, value: String) -> Result<Self::Value, E>

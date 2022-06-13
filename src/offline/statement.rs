@@ -299,8 +299,7 @@ fn eval_statement_conditions(
     let result = if let Some(conditions) = statement_conditions {
         let results = conditions
             .iter()
-            .map(|(op, vs)| eval_statement_condition_op(request_environment, op, vs))
-            .flatten()
+            .flat_map(|(op, vs)| eval_statement_condition_op(request_environment, op, vs))
             .collect();
         match results {
             Ok(mut results) => Ok(reduce_optional_results(&mut results)),
@@ -371,12 +370,12 @@ fn string_match(lhs: &str, rhs: &str) -> bool {
 }
 
 #[inline]
-fn contains_match(lhs: &str, rhs: &Vec<String>) -> bool {
+fn contains_match(lhs: &str, rhs: &[String]) -> bool {
     rhs.iter().any(|r| string_match(lhs, r))
 }
 
 #[inline]
-fn contains_qmatch(lhs: &str, rhs: &Vec<QString>) -> bool {
+fn contains_qmatch(lhs: &str, rhs: &[QString]) -> bool {
     rhs.iter().any(|r| string_match(lhs, &r.to_string()))
 }
 
@@ -410,7 +409,7 @@ fn resource_split(lhs: &str) -> Vec<String> {
 }
 
 #[inline]
-fn contains_resource(lhs: &str, rhs: &Vec<String>) -> bool {
+fn contains_resource(lhs: &str, rhs: &[String]) -> bool {
     rhs.iter().any(|r| resource_match(lhs, r))
 }
 

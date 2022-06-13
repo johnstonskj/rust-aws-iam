@@ -42,7 +42,7 @@ use std::collections::HashMap;
 ///
 /// The top-level `Policy` builder.
 ///
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PolicyBuilder {
     version: Option<Version>,
     id: Option<String>,
@@ -76,16 +76,6 @@ pub struct ConditionBuilder {
 // ------------------------------------------------------------------------------------------------
 // Implementations
 // ------------------------------------------------------------------------------------------------
-
-impl Default for PolicyBuilder {
-    fn default() -> Self {
-        PolicyBuilder {
-            version: None,
-            id: None,
-            statements: Vec::new(),
-        }
-    }
-}
 
 impl PolicyBuilder {
     /// Create a new, empty, policy builder
@@ -124,7 +114,7 @@ impl PolicyBuilder {
     }
 
     /// Add a list of statements to this policy.
-    pub fn evaluate_statements(&mut self, statements: &mut Vec<StatementBuilder>) -> &mut Self {
+    pub fn evaluate_statements(&mut self, statements: &mut [StatementBuilder]) -> &mut Self {
         self.statements.extend(
             statements
                 .iter_mut()

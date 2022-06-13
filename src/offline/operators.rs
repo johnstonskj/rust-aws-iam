@@ -1,10 +1,8 @@
 use crate::model::{ConditionValue, GlobalConditionOperator, QString};
 use crate::offline::variables::expand_string;
 use crate::offline::EvaluationError;
-use serde::export::fmt::Error;
-use serde::export::Formatter;
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt::{Display, Error, Formatter};
 use std::string::ToString;
 use tracing::{error, instrument};
 

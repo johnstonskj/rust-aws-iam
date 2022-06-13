@@ -79,7 +79,7 @@ impl PolicyVisitor for LatexGenerator {
         writeln!(self.writer.as_mut(), "\\section{{Policy}}").expect(IO_ERROR_MSG);
     }
 
-    fn id(&mut self, i: &String) {
+    fn id(&mut self, i: &str) {
         self.newln();
         writeln!(
             self.writer.as_mut(),
@@ -166,7 +166,7 @@ impl StatementVisitor for LatexGenerator {
         self.newln();
     }
 
-    fn sid(&mut self, s: &String) {
+    fn sid(&mut self, s: &str) {
         write!(
             self.writer.as_mut(),
             "The statement \\textit{{identifier}} is \\texttt{{\\small{{{}}}}}. ",
@@ -329,7 +329,7 @@ impl ConditionVisitor for LatexGenerator {
                 OneOrAll::All(vs) => format!(
                     "\\{{{}\\}}",
                     vs.iter()
-                        .map(|v| condition_value(v))
+                        .map(condition_value)
                         .collect::<Vec<String>>()
                         .join(", ")
                 ),
@@ -344,7 +344,7 @@ impl ConditionVisitor for LatexGenerator {
 // ------------------------------------------------------------------------------------------------
 
 fn string_value(v: &str) -> String {
-    format!("``{}''", v.to_string())
+    format!("``{}''", v)
         .replace('$', r"\$")
         .replace('{', r"\{")
         .replace('}', r"\}")

@@ -52,30 +52,21 @@ where
     /// Returns `true` if the option is an `Any` value.
     ///
     pub fn is_any(&self) -> bool {
-        match self {
-            OneOrAny::Any => true,
-            _ => false,
-        }
+        matches!(self, OneOrAny::Any)
     }
 
     ///
     /// Returns `true` if the option is an `One` value.
     ///
     pub fn is_one(&self) -> bool {
-        match self {
-            OneOrAny::One(_) => true,
-            _ => false,
-        }
+        matches!(self, OneOrAny::One(_))
     }
 
     ///
     /// Returns `true` if the option is an `AnyOf` value.
     ///
     pub fn is_any_of(&self) -> bool {
-        match self {
-            OneOrAny::AnyOf(_) => true,
-            _ => false,
-        }
+        matches!(self, OneOrAny::AnyOf(_))
     }
 
     ///
@@ -99,7 +90,7 @@ where
     ///
     pub fn any_of(self) -> Option<Vec<T>> {
         match self {
-            OneOrAny::AnyOf(values) => Some(values.clone()),
+            OneOrAny::AnyOf(values) => Some(values),
             _ => None,
         }
     }

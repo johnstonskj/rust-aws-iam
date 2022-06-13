@@ -53,7 +53,7 @@ impl PolicyVisitor for MarkdownGenerator {
         writeln!(self.writer.as_mut(), "# Policy").expect(IO_ERROR_MSG);
     }
 
-    fn id(&mut self, i: &String) {
+    fn id(&mut self, i: &str) {
         self.newln();
         writeln!(self.writer.as_mut(), "> Policy ID: {}", i).expect(IO_ERROR_MSG);
     }
@@ -82,7 +82,7 @@ impl StatementVisitor for MarkdownGenerator {
         writeln!(self.writer.as_mut(), "## Statement").expect(IO_ERROR_MSG);
     }
 
-    fn sid(&mut self, s: &String) {
+    fn sid(&mut self, s: &str) {
         self.newln();
         writeln!(self.writer.as_mut(), "> Statement ID: {}", s).expect(IO_ERROR_MSG);
     }
@@ -193,9 +193,9 @@ impl ConditionVisitor for MarkdownGenerator {
             } else {
                 ""
             },
-            f.to_string(),
+            f,
             if op.if_exists {
-                format!(" `**`THEN`**\n   * *`{}`*`", f.to_string())
+                format!(" `**`THEN`**\n   * *`{}`*`", f)
             } else {
                 "".to_string()
             },
@@ -232,7 +232,7 @@ impl ConditionVisitor for MarkdownGenerator {
                 OneOrAll::All(vs) => format!(
                     "{:?}",
                     vs.iter()
-                        .map(|v| condition_value(v))
+                        .map(condition_value)
                         .collect::<Vec<String>>()
                 ),
             }

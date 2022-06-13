@@ -410,7 +410,7 @@ impl<'de> Visitor<'de> for ConditionOperatorVisitor {
     where
         E: de::Error,
     {
-        ConditionOperator::from_str(&value).map_err(de::Error::custom)
+        ConditionOperator::from_str(value).map_err(de::Error::custom)
     }
 
     fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
@@ -430,7 +430,7 @@ fn random_id(prefix: &str) -> String {
         "{}{}",
         prefix,
         Uuid::new_v4()
-            .to_hyphenated()
+            .as_hyphenated()
             .encode_lower(&mut Uuid::encode_buffer())
     )
 }
