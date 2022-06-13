@@ -73,7 +73,7 @@ impl Request {
     pub fn request_id() -> Option<String> {
         Some(
             Uuid::new_v4()
-                .to_hyphenated()
+                .as_hyphenated()
                 .encode_lower(&mut Uuid::encode_buffer())
                 .to_string(),
         )

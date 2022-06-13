@@ -430,7 +430,7 @@ fn random_id(prefix: &str) -> String {
         "{}{}",
         prefix,
         Uuid::new_v4()
-            .to_hyphenated()
+            .as_hyphenated()
             .encode_lower(&mut Uuid::encode_buffer())
     )
 }
