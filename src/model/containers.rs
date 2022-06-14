@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 /// A container used by a number of elements where the JSON serialization may be  a single
 /// string,  or an array of string values.
 ///
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum OneOrAll<T> {
     /// A single statement.
@@ -25,12 +25,9 @@ pub enum OneOrAll<T> {
 /// A container used by a number of elements where the JSON serialization may be a wild-card
 /// value, a single string,  or an array of string values.
 ///
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum OneOrAny<T: Clone = String>
-where
-    T: Clone,
-{
+pub enum OneOrAny<T = String> {
     /// The wildcard value, may be Any or All depending on use.
     #[serde(rename = "*")]
     Any,
@@ -44,10 +41,7 @@ where
 // Implementations
 // ------------------------------------------------------------------------------------------------
 
-impl<T> OneOrAny<T>
-where
-    T: Clone,
-{
+impl<T> OneOrAny<T> {
     ///
     /// Returns `true` if the option is an `Any` value.
     ///
