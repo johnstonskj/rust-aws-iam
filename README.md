@@ -135,6 +135,11 @@ the command `policy verify -f markdown` will produce the output between the foll
 
 ## Changes
 
+**Version 0.2.2**
+
+* Added implementations of common equality, ordering, and hashing traits (See
+  [Issue #19](https://github.com/johnstonskj/rust-aws-iam/issues/19)).
+
 **Version 0.2.1**
 
 * Fixing `missing_docs` warnings.
