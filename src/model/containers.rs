@@ -285,15 +285,73 @@ mod tests {
 
     #[test]
     fn test_one_or_all_from_one() {
-        let v = OneOrAll::from(10);
+        let v: OneOrAll<i32> = OneOrAll::from(10);
         assert!(v.is_one());
         assert_eq!(v.one(), Some(10));
     }
 
     #[test]
     fn test_one_or_all_from_all() {
-        let v = OneOrAll::from(vec![10, 9, 8]);
+        let v: OneOrAll<i32> = OneOrAll::from(vec![10, 9, 8]);
         assert!(v.is_all());
         assert_eq!(v.all(), Some(vec![10, 9, 8]));
+    }
+
+    #[test]
+    fn test_one_or_all_se_one() {
+        let v: OneOrAll<i32> = OneOrAll::from(10);
+        let s = serde_json::to_string(&v).expect("Could not serialize");
+        assert_eq!(s, "10");
+    }
+
+    #[test]
+    fn test_one_or_all_se_all() {
+        let v: OneOrAll<i32> = OneOrAll::from(vec![10, 9, 8]);
+        let s = serde_json::to_string(&v).expect("Could not serialize");
+        assert_eq!(s, "[10,9,8]");
+    }
+
+    // --------------------------------------------------------------------------------------------
+
+    #[test]
+    fn test_one_or_any_any() {
+        let v: OneOrAny<i32> = OneOrAny::Any;
+        assert!(v.is_any());
+    }
+
+    #[test]
+    fn test_one_or_any_from_one() {
+        let v: OneOrAny<i32> = OneOrAny::from(10);
+        assert!(v.is_one());
+        assert_eq!(v.one(), Some(10));
+    }
+
+    #[test]
+    fn test_one_or_any_from_all() {
+        let v: OneOrAny<i32> = OneOrAny::from(vec![10, 9, 8]);
+        assert!(v.is_any_of());
+        assert_eq!(v.any_of(), Some(vec![10, 9, 8]));
+    }
+
+    #[test]
+    #[ignore]
+    fn test_one_or_any_se_any() {
+        let v: OneOrAny<i32> = OneOrAny::Any;
+        let s = serde_json::to_string(&v).expect("Could not serialize");
+        assert_eq!(s, "*");
+    }
+
+    #[test]
+    fn test_one_or_any_se_one() {
+        let v: OneOrAny<i32> = OneOrAny::from(10);
+        let s = serde_json::to_string(&v).expect("Could not serialize");
+        assert_eq!(s, "10");
+    }
+
+    #[test]
+    fn test_one_or_any_se_all() {
+        let v: OneOrAny<i32> = OneOrAny::from(vec![10, 9, 8]);
+        let s = serde_json::to_string(&v).expect("Could not serialize");
+        assert_eq!(s, "[10,9,8]");
     }
 }
