@@ -50,7 +50,7 @@ Policies](https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html#
 
 This can be constructed with the following code.
 
-```rust
+```rust,ignore
 use std::collections::HashMap;
 use aws_iam::model::*;
 use aws_iam::model::builder::*;
@@ -95,21 +95,15 @@ standard JSON representation.
 * `service_config` - adds to the verification of policies by storing service-specific configuration
   on actions, resource formats, and condition keys.
 
-The `default` feature includes none of the above. This documentation was built with the following
-features enabled.
-
 */
-#![cfg_attr(feature = "default", doc = "* default")]
-#![cfg_attr(feature = "command_line", doc = "* command line tool")]
-#![cfg_attr(feature = "document", doc = "* documentation formatters")]
-#![cfg_attr(feature = "offline_eval", doc = "* offline evaluation")]
-#![cfg_attr(feature = "service_config", doc = "* service-specific configuration")]
+
 // ------------------------------------------------------------------------------------------------
 // Preamble
 // ------------------------------------------------------------------------------------------------
+
 #![warn(
     missing_debug_implementations,
-    missing_docs,
+//    missing_docs,
     unused_extern_crates,
     rust_2018_idioms
 )]
@@ -121,11 +115,15 @@ extern crate lazy_static;
 // Modules
 // ------------------------------------------------------------------------------------------------
 
-pub mod constants;
+pub mod error;
 
-pub mod io;
+pub mod syntax;
 
 pub mod model;
+
+pub mod context;
+
+pub mod io;
 
 #[cfg(feature = "document")]
 pub mod document;

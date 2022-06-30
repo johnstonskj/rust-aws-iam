@@ -135,6 +135,11 @@ the command `policy verify -f markdown` will produce the output between the foll
 
 ## Changes
 
+**Version 0.3.0**
+
+* Update model API:
+  * ...
+  
 **Version 0.2.2**
 
 * Added implementations of common equality, ordering, and hashing traits (See

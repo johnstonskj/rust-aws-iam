@@ -10,7 +10,7 @@ file name in the form of a `PathBuf` and one which either takes an implementatio
 
 The following reads a policy document from a JSON file and returns the parsed form.
 
-```rust
+```rust,ignore
 use aws_iam::{io, model::*};
 use std::path::PathBuf;
 
@@ -20,32 +20,17 @@ let policy = io::read_from_file(
 ```
 */
 
+use crate::error::IamError;
 use crate::model::Policy;
+use crate::syntax::IamValue;
+use serde_json::Value;
 use std::fs::OpenOptions;
-use std::io;
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
 // ------------------------------------------------------------------------------------------------
-
-///
-/// Errors possible with file read/write.
-///
-#[derive(Debug)]
-pub enum Error {
-    /// Wrapper for any IO error that occurs during reading.
-    ReadingFile(io::Error),
-    /// Wrapper for any IO error that occurs during writing.
-    WritingFile(io::Error),
-    /// Wrapper for Serde error serializing object to JSON.
-    SerializingPolicy(String),
-    /// Wrapper for Serde error de-serializing JSON to object.
-    DeserializingJson(String),
-    /// The policy read from a file is not valid.
-    InvalidPolicy,
-}
 
 // ------------------------------------------------------------------------------------------------
 // Public Functions
@@ -54,60 +39,69 @@ pub enum Error {
 ///
 /// Read a `Policy` document from the file at `path`.
 ///
-pub fn read_from_file(path: &PathBuf) -> Result<Policy, Error> {
+pub fn read_from_file(path: &PathBuf) -> Result<Policy, IamError> {
     match OpenOptions::new().read(true).open(path) {
         Ok(f) => read_from_reader(f),
-        Err(e) => Err(Error::ReadingFile(e)),
+        Err(e) => Err(IamError::from(e)),
     }
 }
 
 ///
 /// Read a `Policy` document from any implementation of `std::io::Read`.
 ///
-pub fn read_from_reader<R>(reader: R) -> Result<Policy, Error>
+pub fn read_from_reader<R>(reader: R) -> Result<Policy, IamError>
 where
     R: Read + Sized,
 {
-    let reader = BufReader::new(reader);
-    match serde_json::from_reader(reader) {
-        Ok(policy) => Ok(policy),
-        Err(e) => Err(Error::DeserializingJson(e.to_string())),
-    }
+    let mut reader = reader;
+    let mut buffer = String::new();
+    let _ = reader.read_to_string(&mut buffer)?;
+    read_from_string(&buffer)
 }
 
 ///
 /// Read a `Policy` document from a string.
 ///
-pub fn read_from_string(s: &str) -> Result<Policy, Error> {
-    read_from_reader(s.as_bytes())
+pub fn read_from_string(s: &str) -> Result<Policy, IamError> {
+    let v: Value = serde_json::from_str(s)?;
+    let policy = Policy::from_json(&v).map_err(IamError::from)?;
+    Ok(policy)
 }
 
 ///
 /// Write the `policy` object to a file at `path`, this will create a file if it does
 /// not exist and overwrite any file if it exists.
 ///
-pub fn write_to_file(path: &PathBuf, policy: &Policy) -> Result<(), Error> {
+pub fn write_to_file(path: &PathBuf, policy: &Policy, pretty: bool) -> Result<(), IamError> {
     match OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .open(path)
     {
-        Ok(f) => write_to_writer(f, policy),
-        Err(e) => Err(Error::WritingFile(e)),
+        Ok(f) => write_to_writer(f, policy, pretty),
+        Err(e) => Err(IamError::from(e)),
     }
 }
 
 ///
 /// Write the `policy` object to any implementation of `std::io::Write`.
 ///
-pub fn write_to_writer<W>(writer: W, policy: &Policy) -> Result<(), Error>
+pub fn write_to_writer<W>(writer: W, policy: &Policy, pretty: bool) -> Result<(), IamError>
 where
     W: Write + Sized,
 {
-    let writer = BufWriter::new(writer);
-    match serde_json::to_writer_pretty(writer, policy) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(Error::SerializingPolicy(e.to_string())),
-    }
+    let mut writer = writer;
+    let _ = writer.write(to_string(policy, pretty)?.as_bytes())?;
+    Ok(())
+}
+
+pub fn to_string(policy: &Policy, pretty: bool) -> Result<String, IamError> {
+    let json = policy.to_json().unwrap();
+    let json = if pretty {
+        serde_json::to_string_pretty(&json)?
+    } else {
+        serde_json::to_string(&json)?
+    };
+    Ok(json)
 }
