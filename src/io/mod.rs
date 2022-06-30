@@ -11,7 +11,7 @@ file name in the form of a `PathBuf` and one which either takes an implementatio
 The following reads a policy document from a JSON file and returns the parsed form.
 
 ```rust,ignore
-use aws_iam::{io, model::*};
+use aws_iam::io;
 use std::path::PathBuf;
 
 let policy = io::read_from_file(
@@ -26,7 +26,7 @@ use crate::syntax::IamValue;
 use serde_json::Value;
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::Path;
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -39,7 +39,7 @@ use std::path::PathBuf;
 ///
 /// Read a `Policy` document from the file at `path`.
 ///
-pub fn read_from_file(path: &PathBuf) -> Result<Policy, IamError> {
+pub fn read_from_file(path: &Path) -> Result<Policy, IamError> {
     match OpenOptions::new().read(true).open(path) {
         Ok(f) => read_from_reader(f),
         Err(e) => Err(IamError::from(e)),
@@ -72,7 +72,7 @@ pub fn read_from_string(s: &str) -> Result<Policy, IamError> {
 /// Write the `policy` object to a file at `path`, this will create a file if it does
 /// not exist and overwrite any file if it exists.
 ///
-pub fn write_to_file(path: &PathBuf, policy: &Policy, pretty: bool) -> Result<(), IamError> {
+pub fn write_to_file(path: &Path, policy: &Policy, pretty: bool) -> Result<(), IamError> {
     match OpenOptions::new()
         .write(true)
         .create(true)
