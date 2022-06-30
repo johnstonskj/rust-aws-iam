@@ -248,17 +248,17 @@ where
     Ok(value)
 }
 
-#[inline]
-pub(crate) fn vec_from_json<V>(value: &Value, name: &str) -> Result<Vec<V>, IamFormatError>
-where
-    V: IamValue,
-{
-    if let Value::Array(arr) = value {
-        arr.iter().map(V::from_json).collect()
-    } else {
-        type_mismatch(name, JSON_TYPE_NAME_ARRAY, json_type_name(value)).into()
-    }
-}
+// #[inline]
+// pub(crate) fn vec_from_json<V>(value: &Value, name: &str) -> Result<Vec<V>, IamFormatError>
+// where
+//     V: IamValue,
+// {
+//     if let Value::Array(arr) = value {
+//         arr.iter().map(V::from_json).collect()
+//     } else {
+//         type_mismatch(name, JSON_TYPE_NAME_ARRAY, json_type_name(value)).into()
+//     }
+// }
 
 #[inline]
 pub(crate) fn vec_from_str_json<V, E>(value: &Value, name: &str) -> Result<Vec<V>, IamFormatError>

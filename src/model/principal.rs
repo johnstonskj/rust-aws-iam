@@ -4,17 +4,20 @@ More detailed description, with
 # Example
  */
 
+use std::str::FromStr;
+
 use crate::{
     error::{type_mismatch, unexpected_properties, unexpected_value_for_type, IamFormatError},
     model::{MaybeAny, OrAny},
     syntax::{
         display_vec_to_json, json_type_name, vec_from_str_json, IamProperty, IamValue,
-        JSON_TYPE_NAME_OBJECT, POLICY_WILDCARD_VALUE, PRINCIPAL_NAME, PRINCIPAL_TYPE_AWS,
-        PRINCIPAL_TYPE_CANONICAL_USER, PRINCIPAL_TYPE_FEDERATED, PRINCIPAL_TYPE_SERVICE,
-        PRINCIPAL_VALUE_NOT_PRINCIPAL, PRINCIPAL_VALUE_PRINCIPAL,
+        JSON_TYPE_NAME_ARRAY, JSON_TYPE_NAME_OBJECT, JSON_TYPE_NAME_STRING, POLICY_WILDCARD_VALUE,
+        PRINCIPAL_NAME, PRINCIPAL_TYPE_AWS, PRINCIPAL_TYPE_CANONICAL_USER,
+        PRINCIPAL_TYPE_FEDERATED, PRINCIPAL_TYPE_SERVICE, PRINCIPAL_VALUE_NOT_PRINCIPAL,
+        PRINCIPAL_VALUE_PRINCIPAL,
     },
 };
-use aws_arn::ARN;
+use aws_arn::{AccountIdentifier, ArnError, ARN};
 use serde_json::{Map, Value};
 
 use super::naming::{CanonicalUserId, ServiceName};
@@ -337,7 +340,7 @@ impl IamValue for PrincipalMap {
         if let Value::Object(object) = value {
             let mut principals = PrincipalMap::default();
             if let Some(value) = object.get(PRINCIPAL_TYPE_AWS) {
-                let results: Vec<ARN> = vec_from_str_json(value, PRINCIPAL_TYPE_AWS)?;
+                let results: Vec<ARN> = arn_vec_from_str_json(value)?;
                 principals.aws = results;
             }
             if let Some(value) = object.get(PRINCIPAL_TYPE_FEDERATED) {
@@ -357,6 +360,42 @@ impl IamValue for PrincipalMap {
         } else {
             type_mismatch(PRINCIPAL_NAME, JSON_TYPE_NAME_OBJECT, json_type_name(value)).into()
         }
+    }
+}
+
+#[inline]
+pub(crate) fn arn_vec_from_str_json(value: &Value) -> Result<Vec<ARN>, IamFormatError> {
+    fn from_str(s: &str) -> Result<ARN, IamFormatError> {
+        if s.contains(':') {
+            ARN::from_str(s).map_err(ArnError::into)
+        } else {
+            let account = AccountIdentifier::from_str(s)?;
+            Ok(account.into())
+        }
+    }
+    if let Value::String(s) = value {
+        Ok(vec![from_str(s)?])
+    } else if let Value::Array(arr) = value {
+        arr.iter()
+            .map(|v| {
+                if let Value::String(s) = v {
+                    Ok(from_str(s)?)
+                } else {
+                    Err(type_mismatch(
+                        PRINCIPAL_TYPE_AWS,
+                        JSON_TYPE_NAME_STRING,
+                        json_type_name(value),
+                    ))
+                }
+            })
+            .collect()
+    } else {
+        type_mismatch(
+            PRINCIPAL_TYPE_AWS,
+            JSON_TYPE_NAME_ARRAY,
+            json_type_name(value),
+        )
+        .into()
     }
 }
 
