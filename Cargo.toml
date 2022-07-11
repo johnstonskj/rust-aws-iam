@@ -24,7 +24,7 @@ offline_eval = []
 service_config = ["toml"]
 
 [dependencies]
-aws-arn = "0.2.1"
+aws-arn = "0.3.1"
 uuid = { version = "1.1", features = ["serde", "v4"] }
 lazy_static = "1.4"
 regex = "1.3"
