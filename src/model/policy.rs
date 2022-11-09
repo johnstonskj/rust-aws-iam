@@ -6,6 +6,7 @@ More detailed description, with
 
 use std::convert::TryFrom;
 
+use super::id;
 use crate::error::{empty_vector_property, unexpected_value_for_type, IamFormatError};
 use crate::model::{Statement, Version};
 use crate::syntax::{
@@ -154,73 +155,117 @@ impl Policy {
             empty_vector_property(STATEMENT_NAME).into()
         } else {
             Ok(Self {
-                version: Default::default(),
+                version: None,
                 id: Default::default(),
                 statement: statements,
             })
         }
     }
 
-    pub fn named(id: &str, statements: Vec<Statement>) -> Result<Self, IamFormatError> {
-        if !Self::is_valid_external_id(id) {
-            unexpected_value_for_type(ID_NAME, id).into()
+    pub fn named<S>(policy_id: S, statements: Vec<Statement>) -> Result<Self, IamFormatError>
+    where
+        S: Into<String>,
+    {
+        if !id::is_valid_external_id(policy_id) {
+            unexpected_value_for_type(ID_NAME, policy_id).into()
         } else if statements.is_empty() {
             empty_vector_property(STATEMENT_NAME).into()
         } else {
             Ok(Self {
-                version: Default::default(),
-                id: Some(id.to_string()),
+                version: None,
+                id: Some(policy_id.into()),
                 statement: statements,
             })
         }
     }
 
-    pub fn for_version(mut self, version: Version) -> Self {
-        self.version = Some(version);
-        self
+    pub fn unnamed_with_version(
+        statements: Vec<Statement>,
+        version: Version,
+    ) -> Result<Self, IamFormatError> {
+        if statements.is_empty() {
+            empty_vector_property(STATEMENT_NAME).into()
+        } else {
+            Ok(Self {
+                version: Some(version),
+                id: Default::default(),
+                statement: statements,
+            })
+        }
     }
+
+    pub fn named_with_version<S>(
+        policy_id: S,
+        statements: Vec<Statement>,
+        version: Version,
+    ) -> Result<Self, IamFormatError>
+    where
+        S: Into<String>,
+    {
+        if !id::is_valid_external_id(policy_id) {
+            unexpected_value_for_type(ID_NAME, policy_id).into()
+        } else if statements.is_empty() {
+            empty_vector_property(STATEMENT_NAME).into()
+        } else {
+            Ok(Self {
+                version: Some(version),
+                id: Some(policy_id.into()),
+                statement: statements,
+            })
+        }
+    }
+
+    // --------------------------------------------------------------------------------------------
 
     pub fn version(&self) -> Option<Version> {
         self.version
     }
 
+    pub fn set_version(&mut self, version: Version) {
+        self.version = Some(version)
+    }
+
+    // --------------------------------------------------------------------------------------------
+
     pub fn id(&self) -> Option<&String> {
         self.id.as_ref()
     }
+
+    pub fn set_id<S>(&mut self, policy_id: S) -> Result<(), IamFormatError>
+    where
+        S: Into<String>,
+    {
+        if !id::is_valid_external_id(policy_id) {
+            unexpected_value_for_type(ID_NAME, policy_id).into()
+        } else {
+            self.id = Some(policy_id.into());
+            Ok(())
+        }
+    }
+
+    pub fn unset_id(&mut self) {
+        self.id = None
+    }
+
+    pub fn set_auto_id(&mut self) {
+        self.id = Some(id::new_external_id())
+    }
+
+    // --------------------------------------------------------------------------------------------
 
     pub fn statements(&self) -> impl Iterator<Item = &Statement> {
         self.statement.iter()
     }
 
-    pub fn into_iterator(self) -> impl Iterator<Item = Statement> {
-        self.statement.into_iter()
+    pub fn statements_mut(&mut self) -> impl Iterator<Item = &mut Statement> {
+        self.statement.iter_mut()
     }
 
-    // https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html
-    // The external ID value that a third party uses to assume a role must
-    // have a minimum of 2 characters and a maximum of 1,224 characters. The
-    // value must be alphanumeric without white space. It can also include the
-    // following symbols: plus (+), equal (=), comma (,), period (.), at (@),
-    // colon (:), forward slash (/), and hyphen (-). For more information
-    // about the external ID, see How to use an external ID when granting
-    // access to your AWS resources to a third party.
-    pub fn is_valid_external_id(s: &str) -> bool {
-        s.len() >= 2
-            && s.len() <= 1224
-            && s.chars().any(|c| {
-                c.is_ascii_alphanumeric() || ['+', '=', ',', '.', '@', ':', '/', '-'].contains(&c)
-            })
+    pub fn statements_push(&mut self, statement: Statement) {
+        self.statement.push(statement)
     }
-}
 
-// ------------------------------------------------------------------------------------------------
-// Modules
-// ------------------------------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------------------------------
-// Unit Tests
-// ------------------------------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
+    pub fn statements_extend(&mut self, statements: Vec<Statement>) {
+        self.statement.extend(statements.into_iter())
+    }
 }

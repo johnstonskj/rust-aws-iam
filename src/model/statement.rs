@@ -4,7 +4,8 @@ More detailed description, with
 # Example
  */
 
-use crate::error::{missing_property, type_mismatch, IamFormatError};
+use super::{id, OrAny};
+use crate::error::{missing_property, type_mismatch, unexpected_value_for_type, IamFormatError};
 use crate::model::{Action, Condition, Effect, Principal, Resource};
 use crate::syntax::{
     display_to_json, from_json_str, json_type_name, IamProperty, IamValue, EFFECT_NAME,
@@ -176,23 +177,121 @@ impl Statement {
         }
     }
 
-    pub fn allow(mut self) -> Self {
+    // --------------------------------------------------------------------------------------------
+
+    pub fn sid(&self) -> Option<&String> {
+        self.sid.as_ref()
+    }
+
+    pub fn set_sid<S>(&mut self, sid: S) -> Result<(), IamFormatError>
+    where
+        S: Into<String>,
+    {
+        if !id::is_valid_external_id(sid) {
+            unexpected_value_for_type(SID_NAME, sid).into()
+        } else {
+            self.sid = Some(sid.into());
+            Ok(())
+        }
+    }
+
+    pub fn unset_sid(&mut self) -> &mut Self {
+        self.sid = None;
+        self
+    }
+
+    pub fn set_auto_sid(&mut self) -> &mut Self {
+        self.sid = Some(id::new_external_id());
+        self
+    }
+
+    // --------------------------------------------------------------------------------------------
+
+    pub fn effect(&self) -> &Effect {
+        &self.effect
+    }
+
+    pub fn allow(&mut self) -> &mut Self {
         self.effect = Effect::Allow;
         self
     }
 
-    pub fn deny(mut self) -> Self {
+    pub fn deny(&mut self) -> &mut Self {
         self.effect = Effect::Deny;
         self
     }
 
-    pub fn action(mut self, action: Action) -> Self {
+    // --------------------------------------------------------------------------------------------
+
+    pub fn principal(&self) -> Option<&Principal> {
+        self.principal.as_ref()
+    }
+
+    pub fn set_principal(&mut self, principal: Principal) -> &mut Self {
+        self.principal = Some(principal);
+        self
+    }
+
+    pub fn any_principal(&mut self) -> &mut Self {
+        self.principal = Some(Principal::Principal(OrAny::Any));
+        self
+    }
+
+    pub fn no_principal(&mut self) -> &mut Self {
+        self.principal = Some(Principal::NotPrincipal(OrAny::Any));
+        self
+    }
+
+    // --------------------------------------------------------------------------------------------
+
+    pub fn action(&self) -> &Action {
+        &self.action
+    }
+
+    pub fn set_action(&mut self, action: Action) -> &mut Self {
         self.action = action;
         self
     }
 
-    pub fn resource(mut self, resource: Resource) -> Self {
+    pub fn any_action(&mut self) -> &mut Self {
+        self.action = Action::Action(OrAny::Any);
+        self
+    }
+
+    pub fn no_action(&mut self) -> &mut Self {
+        self.action = Action::NotAction(OrAny::Any);
+        self
+    }
+
+    // --------------------------------------------------------------------------------------------
+
+    pub fn resource(&self) -> &Resource {
+        &self.resource
+    }
+
+    pub fn set_resource(&mut self, resource: Resource) -> &mut Self {
         self.resource = resource;
+        self
+    }
+
+    pub fn any_resource(&mut self) -> &mut Self {
+        self.resource = Resource::Resource(OrAny::Any);
+        self
+    }
+
+    pub fn no_resource(&mut self) -> &mut Self {
+        self.resource = Resource::NotResource(OrAny::Any);
+        self
+    }
+
+    // --------------------------------------------------------------------------------------------
+
+    pub fn condition(&self) -> Option<&Condition> {
+        self.condition.as_ref()
+    }
+
+    pub fn set_condition(&mut self, condition: Condition) -> &mut Self {
+        self.condition = Some(condition);
         self
     }
 }

@@ -289,6 +289,8 @@ impl<T> OrAny<T> {
 // Modules
 // ------------------------------------------------------------------------------------------------
 
+pub mod id;
+
 pub mod policy;
 pub use policy::Policy;
 
@@ -302,7 +304,7 @@ pub mod effect;
 pub use effect::Effect;
 
 pub mod principal;
-pub use principal::Principal;
+pub use principal::{Principal, PrincipalKind, PrincipalMap};
 
 pub mod action;
 pub use action::Action;
@@ -314,4 +316,4 @@ pub mod condition;
 pub use condition::{Condition, ConditionValue, GlobalOperator, Match, Operator, Quantifier};
 
 pub mod naming;
-pub use naming::{CanonicalUserId, QualifiedName, ServiceName};
+pub use naming::{CanonicalUserId, HostName, QualifiedName, ServiceName};

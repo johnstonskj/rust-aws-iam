@@ -38,7 +38,7 @@ fn condition_operator_from_str() {
 
 #[test]
 fn condition_to_json() {
-    let c = Condition::new(
+    let c = Condition::new_one(
         Operator::string_equals(),
         QualifiedName::from_str(AWS_RESOURCE_TAG).unwrap(),
         "test",

@@ -12,6 +12,7 @@ use crate::syntax::{
     display_vec_to_json, from_json_str, json_type_name, IamProperty, IamValue, ACTION_NAME,
     ACTION_VALUE_ACTION, ACTION_VALUE_NOT_ACTION, JSON_TYPE_NAME_STRING, POLICY_WILDCARD_VALUE,
 };
+use aws_arn::ARN;
 use serde_json::{Map, Value};
 
 // ------------------------------------------------------------------------------------------------
@@ -110,24 +111,6 @@ impl IamProperty for Action {
     }
 }
 
-impl Action {
-    pub fn this_action(name: QualifiedName) -> Self {
-        Self::Action(OrAny::Some(vec![name]))
-    }
-
-    pub fn these_actions(names: Vec<QualifiedName>) -> Self {
-        Self::Action(OrAny::Some(names))
-    }
-
-    pub fn not_this_action(name: QualifiedName) -> Self {
-        Self::NotAction(OrAny::Some(vec![name]))
-    }
-
-    pub fn not_these_actions(names: Vec<QualifiedName>) -> Self {
-        Self::NotAction(OrAny::Some(names))
-    }
-}
-
 impl MaybeAny<Vec<QualifiedName>> for Action {
     fn new_any() -> Self
     where
@@ -152,6 +135,40 @@ impl MaybeAny<Vec<QualifiedName>> for Action {
 
     fn is_negative(&self) -> bool {
         matches!(self, Action::NotAction(_))
+    }
+}
+
+impl Action {
+    pub fn this_action(name: QualifiedName) -> Self {
+        Self::Action(OrAny::Some(vec![name]))
+    }
+
+    pub fn these_actions(names: Vec<QualifiedName>) -> Self {
+        Self::Action(OrAny::Some(names))
+    }
+
+    pub fn not_this_action(name: QualifiedName) -> Self {
+        Self::NotAction(OrAny::Some(vec![name]))
+    }
+
+    pub fn not_these_actions(names: Vec<QualifiedName>) -> Self {
+        Self::NotAction(OrAny::Some(names))
+    }
+
+    pub fn is_any(&self) -> bool {
+        matches!(self.inner(), OrAny::Any)
+    }
+
+    pub fn is_some(&self) -> bool {
+        matches!(self.inner(), OrAny::Some(_))
+    }
+
+    pub fn some(&self) -> Option<&Vec<QualifiedName>> {
+        if let OrAny::Some(v) = self.inner() {
+            Some(v)
+        } else {
+            None
+        }
     }
 }
 

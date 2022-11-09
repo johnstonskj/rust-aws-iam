@@ -1,36 +1,127 @@
 /*!
 One-line description.
-More detailed description, with
-# Example
+
+```abnf
+<condition_block> = "Condition" : { <condition_map> }
+<condition_map> = {
+  <condition_type_string> : { <condition_key_string> : <condition_value_list> },
+  <condition_type_string> : { <condition_key_string> : <condition_value_list> }, ...
+}
+<condition_value_list> = [<condition_value>, <condition_value>, ...]
+<condition_value> = ("string" | "number" | "Boolean")
+```
+
+## condition_type_string
+
+Identifies the type of condition being tested,
+such as StringEquals, StringLike, NumericLessThan, DateGreaterThanEquals,
+Bool, BinaryEquals, IpAddress, ArnEquals, etc. For a complete list of
+condition types, see IAM JSON policy elements: Condition operators.
+
+```json
+"Condition": {
+  "NumericLessThanEquals": {
+    "s3:max-keys": "10"
+  }
+}
+
+"Condition": {
+  "Bool": {
+    "aws:SecureTransport": "true"
+  }
+}
+
+"Condition": {
+  "StringEquals": {
+      "s3:x-amz-server-side-encryption": "AES256"
+   }
+}
+```
+
+## condition_key_string
+
+Identifies the condition key whose value will be tested to determine
+whether the condition is met. AWS defines a set of condition keys that are
+available in all AWS services, including `aws:PrincipalType`,
+`aws:SecureTransport`, and `aws:userid`.
+
+For a list of AWS condition keys, see AWS global condition context keys.
+For condition keys that are specific to a service, see the documentation
+for that service such as the following:
+
+Specifying Conditions in a Policy in the Amazon Simple Storage Service
+User Guide
+
+IAM Policies for Amazon EC2 in the Amazon EC2 User Guide for Linux
+Instances.
+
+```json
+"Condition":{
+  "Bool": {
+      "aws:SecureTransport": "true"
+   }
+}
+
+"Condition": {
+  "StringNotEquals": {
+      "s3:x-amz-server-side-encryption": "AES256"
+   }
+}
+
+"Condition": {
+  "StringEquals": {
+    "aws:ResourceTag/purpose": "test"
+  }
+}
+```
+
  */
 
 use crate::error::{type_mismatch, unexpected_value_for_type, IamFormatError};
 use crate::model::QualifiedName;
 use crate::syntax::{
-    json_type_name, vec_map_to_json, IamProperty, IamValue, CONDITION_NAME,
-    CONDITION_OPERATOR_ARN_EQUALS, CONDITION_OPERATOR_ARN_LIKE, CONDITION_OPERATOR_ARN_NOT_EQUALS,
-    CONDITION_OPERATOR_ARN_NOT_LIKE, CONDITION_OPERATOR_BINARY_EQUALS, CONDITION_OPERATOR_BOOL,
-    CONDITION_OPERATOR_DATE_EQUALS, CONDITION_OPERATOR_DATE_GREATER_THAN,
-    CONDITION_OPERATOR_DATE_GREATER_THAN_EQUALS, CONDITION_OPERATOR_DATE_LESS_THAN,
-    CONDITION_OPERATOR_DATE_LESS_THAN_EQUALS, CONDITION_OPERATOR_DATE_NOT_EQUALS,
-    CONDITION_OPERATOR_IP_ADDRESS, CONDITION_OPERATOR_NOT_IP_ADDRESS, CONDITION_OPERATOR_NULL,
-    CONDITION_OPERATOR_NUMERIC_EQUALS, CONDITION_OPERATOR_NUMERIC_GREATER_THAN,
-    CONDITION_OPERATOR_NUMERIC_GREATER_THAN_EQUALS, CONDITION_OPERATOR_NUMERIC_LESS_THAN,
-    CONDITION_OPERATOR_NUMERIC_LESS_THAN_EQUALS, CONDITION_OPERATOR_NUMERIC_NOT_EQUALS,
-    CONDITION_OPERATOR_STRING_EQUALS, CONDITION_OPERATOR_STRING_EQUALS_IGNORE_CASE,
-    CONDITION_OPERATOR_STRING_LIKE, CONDITION_OPERATOR_STRING_NOT_EQUALS,
-    CONDITION_OPERATOR_STRING_NOT_EQUALS_IGNORE_CASE, CONDITION_OPERATOR_STRING_NOT_LIKE,
-    CONDITION_QUANTIFIER_FOR_ALL, CONDITION_QUANTIFIER_FOR_ANY, CONDITION_QUANTIFIER_IF_EXISTS,
-    CONDITION_VALUE_NAME, JSON_NUMBER_TYPE_NAME_FLOAT, JSON_NUMBER_TYPE_NAME_INTEGER,
-    JSON_NUMBER_TYPE_NAME_UNSIGNED, JSON_TYPE_NAME_BOOL, JSON_TYPE_NAME_NUMBER,
-    JSON_TYPE_NAME_OBJECT, JSON_TYPE_NAME_STRING,
+    display_vec_map_to_json, json_type_name, string_vec_from_json, IamProperty, IamValue,
+    CONDITION_NAME, CONDITION_OPERATOR_ARN_EQUALS, CONDITION_OPERATOR_ARN_LIKE,
+    CONDITION_OPERATOR_ARN_NOT_EQUALS, CONDITION_OPERATOR_ARN_NOT_LIKE,
+    CONDITION_OPERATOR_BINARY_EQUALS, CONDITION_OPERATOR_BOOL, CONDITION_OPERATOR_DATE_EQUALS,
+    CONDITION_OPERATOR_DATE_GREATER_THAN, CONDITION_OPERATOR_DATE_GREATER_THAN_EQUALS,
+    CONDITION_OPERATOR_DATE_LESS_THAN, CONDITION_OPERATOR_DATE_LESS_THAN_EQUALS,
+    CONDITION_OPERATOR_DATE_NOT_EQUALS, CONDITION_OPERATOR_IP_ADDRESS,
+    CONDITION_OPERATOR_NOT_IP_ADDRESS, CONDITION_OPERATOR_NULL, CONDITION_OPERATOR_NUMERIC_EQUALS,
+    CONDITION_OPERATOR_NUMERIC_GREATER_THAN, CONDITION_OPERATOR_NUMERIC_GREATER_THAN_EQUALS,
+    CONDITION_OPERATOR_NUMERIC_LESS_THAN, CONDITION_OPERATOR_NUMERIC_LESS_THAN_EQUALS,
+    CONDITION_OPERATOR_NUMERIC_NOT_EQUALS, CONDITION_OPERATOR_STRING_EQUALS,
+    CONDITION_OPERATOR_STRING_EQUALS_IGNORE_CASE, CONDITION_OPERATOR_STRING_LIKE,
+    CONDITION_OPERATOR_STRING_NOT_EQUALS, CONDITION_OPERATOR_STRING_NOT_EQUALS_IGNORE_CASE,
+    CONDITION_OPERATOR_STRING_NOT_LIKE, CONDITION_QUANTIFIER_FOR_ALL, CONDITION_QUANTIFIER_FOR_ANY,
+    CONDITION_QUANTIFIER_IF_EXISTS, CONDITION_VALUE_NAME, GLOBAL_CONDITION_KEY_CALLED_VIA,
+    GLOBAL_CONDITION_KEY_CALLED_VIA_FIRST, GLOBAL_CONDITION_KEY_CALLED_VIA_LAST,
+    GLOBAL_CONDITION_KEY_CURRENT_TIME, GLOBAL_CONDITION_KEY_EPOCH_TIME,
+    GLOBAL_CONDITION_KEY_FEDERATED_PROVIDER, GLOBAL_CONDITION_KEY_MULTIFACTOR_AUTH_AGE,
+    GLOBAL_CONDITION_KEY_MULTIFACTOR_AUTH_PRESENT, GLOBAL_CONDITION_KEY_NAMESPACE,
+    GLOBAL_CONDITION_KEY_PRINCIPAL_ACCOUNT, GLOBAL_CONDITION_KEY_PRINCIPAL_ARN,
+    GLOBAL_CONDITION_KEY_PRINCIPAL_IS_AWS_SERVICE, GLOBAL_CONDITION_KEY_PRINCIPAL_ORG_ID,
+    GLOBAL_CONDITION_KEY_PRINCIPAL_ORG_PATHS, GLOBAL_CONDITION_KEY_PRINCIPAL_SERVICE_NAME,
+    GLOBAL_CONDITION_KEY_PRINCIPAL_SERVICE_NAMES_LIST, GLOBAL_CONDITION_KEY_PRINCIPAL_TAG,
+    GLOBAL_CONDITION_KEY_PRINCIPAL_TYPE, GLOBAL_CONDITION_KEY_REFERER,
+    GLOBAL_CONDITION_KEY_REQUESTED_REGION, GLOBAL_CONDITION_KEY_REQUEST_TAG,
+    GLOBAL_CONDITION_KEY_RESOURCE_ACCOUNT, GLOBAL_CONDITION_KEY_RESOURCE_ORG_ID,
+    GLOBAL_CONDITION_KEY_RESOURCE_ORG_PATHS, GLOBAL_CONDITION_KEY_RESOURCE_TAG,
+    GLOBAL_CONDITION_KEY_SECURE_TRANSPORT, GLOBAL_CONDITION_KEY_SOURCE_ACCOUNT,
+    GLOBAL_CONDITION_KEY_SOURCE_ARN, GLOBAL_CONDITION_KEY_SOURCE_IDENTITY,
+    GLOBAL_CONDITION_KEY_SOURCE_IP, GLOBAL_CONDITION_KEY_SOURCE_VPC,
+    GLOBAL_CONDITION_KEY_SOURCE_VPCE, GLOBAL_CONDITION_KEY_TAG_KEYS,
+    GLOBAL_CONDITION_KEY_TOKEN_ISSUE_TIME, GLOBAL_CONDITION_KEY_USERID,
+    GLOBAL_CONDITION_KEY_USERNAME, GLOBAL_CONDITION_KEY_USER_AGENT,
+    GLOBAL_CONDITION_KEY_VIA_AWS_SERVICE, GLOBAL_CONDITION_KEY_VPC_SOURCE_IP,
+    JSON_TYPE_NAME_OBJECT, NAMESPACE_SEPARATOR,
 };
-use aws_arn::ARN;
-use serde_json::{Map, Number, Value};
+use lazy_static::lazy_static;
+use regex::{Captures, Regex};
+use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::iter::FromIterator;
-use std::net::IpAddr;
 use std::ops::Deref;
 use std::str::FromStr;
 
@@ -38,85 +129,14 @@ use std::str::FromStr;
 // Public Types
 // ------------------------------------------------------------------------------------------------
 
-/// ```abnf
-/// <condition_block> = "Condition" : { <condition_map> }
-/// <condition_map> = {
-///   <condition_type_string> : { <condition_key_string> : <condition_value_list> },
-///   <condition_type_string> : { <condition_key_string> : <condition_value_list> }, ...
-/// }
-/// <condition_value_list> = [<condition_value>, <condition_value>, ...]
-/// <condition_value> = ("string" | "number" | "Boolean")
-/// ```
-///     
-/// ## condition_type_string
-///
-/// Identifies the type of condition being tested,
-/// such as StringEquals, StringLike, NumericLessThan, DateGreaterThanEquals,
-/// Bool, BinaryEquals, IpAddress, ArnEquals, etc. For a complete list of
-/// condition types, see IAM JSON policy elements: Condition operators.
-///
-/// ```json
-/// "Condition": {
-///   "NumericLessThanEquals": {
-///     "s3:max-keys": "10"
-///   }
-/// }
-///
-/// "Condition": {
-///   "Bool": {
-///     "aws:SecureTransport": "true"
-///   }
-/// }
-///
-/// "Condition": {
-///   "StringEquals": {
-///       "s3:x-amz-server-side-encryption": "AES256"
-///    }
-/// }
-/// ```
-///
-/// ## condition_key_string
-///
-/// Identifies the condition key whose value will be tested to determine
-/// whether the condition is met. AWS defines a set of condition keys that are
-/// available in all AWS services, including `aws:PrincipalType`,
-/// `aws:SecureTransport`, and `aws:userid`.
-///
-/// For a list of AWS condition keys, see AWS global condition context keys.
-/// For condition keys that are specific to a service, see the documentation
-/// for that service such as the following:
-///
-/// Specifying Conditions in a Policy in the Amazon Simple Storage Service
-/// User Guide
-///
-/// IAM Policies for Amazon EC2 in the Amazon EC2 User Guide for Linux
-/// Instances.
-///
-/// ```json
-/// "Condition":{
-///   "Bool": {
-///       "aws:SecureTransport": "true"
-///    }
-/// }
-///
-/// "Condition": {
-///   "StringNotEquals": {
-///       "s3:x-amz-server-side-encryption": "AES256"
-///    }
-/// }
-///
-/// "Condition": {
-///   "StringEquals": {
-///     "aws:ResourceTag/purpose": "test"
-///   }
-/// }
-/// ```
-///
 #[derive(Debug, Clone, PartialEq)]
 pub struct Condition(HashMap<Operator, Match>);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Match(HashMap<QualifiedName, Vec<ConditionValue>>);
+
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct ConditionValue(String);
 
 ///
 /// Pulls apart the string form of an operator used by IAM. It identifies the
@@ -144,7 +164,8 @@ pub struct Operator {
 /// key to control access to specific attributes of a DynamoDB table or to an Amazon
 /// EC2 instance based on tags.
 ///
-/// From [Creating a Condition with Multiple Keys or Values](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_multi-value-conditions.html).
+/// From [Creating a Condition with Multiple Keys or
+/// Values](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_multi-value-conditions.html).
 ///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Quantifier {
@@ -162,7 +183,8 @@ pub enum Quantifier {
 /// key you choose. You can choose a global condition key or a service-specific
 /// condition key.
 ///
-/// From [IAM JSON Policy Elements: Condition Operators](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html).
+/// From [IAM JSON Policy Elements: Condition
+/// Operators](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html).
 ///
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GlobalOperator {
@@ -246,19 +268,57 @@ pub enum GlobalOperator {
     Null,
 }
 
-///
-/// The value to test an operator against.
-///
-#[derive(Debug, Clone, PartialEq)]
-pub enum ConditionValue {
-    /// A String (or QualifiedName) value.
-    String(String),
-    /// A signed 64-bit integer value.
-    Integer(i64),
-    /// A 64-bit float value.
-    Float(f64),
-    /// A boolean value.
-    Bool(bool),
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GlobalConditionKey {
+    CalledVia,
+    CalledViaFirst,
+    CalledViaLast,
+    CurrentTime,
+    EpochTime,
+    FederatedProvider,
+    MultiFactorAuthAge,
+    MultiFactorAuthPresent,
+    PrincipalAccount,
+    PrincipalArn,
+    PrincipalIsAWSService,
+    PrincipalOrgID,
+    PrincipalOrgPaths,
+    PrincipalServiceName,
+    PrincipalServiceNamesList,
+    PrincipalTag,
+    PrincipalType,
+    Referer,
+    RequestedRegion,
+    RequestTag,
+    ResourceAccount,
+    ResourceOrgID,
+    ResourceOrgPaths,
+    ResourceTag,
+    SecureTransport,
+    SourceAccount,
+    SourceArn,
+    SourceIdentity,
+    SourceIp,
+    SourceVpc,
+    SourceVpce,
+    TagKeys,
+    TokenIssueTime,
+    UserAgent,
+    UserId,
+    UserName,
+    ViaAWSService,
+    VpcSourceIp,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum IamConditionKey {
+    AssociatedResourceArn,
+    AWSServiceName,
+    OrganizationsPolicyId,
+    PassedToService,
+    PermissionsBoundary,
+    PolicyARN,
+    ResourceTag,
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -438,20 +498,27 @@ impl Condition {
         Self::new_match(Operator::null(), matches)
     }
 
-    pub fn new<V>(operator: Operator, context_key: QualifiedName, value: V) -> Self
+    pub fn new_one<S>(operator: Operator, context_key: QualifiedName, value: S) -> Self
     where
-        V: Into<ConditionValue>,
+        S: Into<ConditionValue>,
     {
         Self::new_match(operator, Match::new_one(context_key, value))
+    }
+
+    pub fn new<S>(operator: Operator, context_key: QualifiedName, value: Vec<S>) -> Self
+    where
+        S: Into<ConditionValue>,
+    {
+        Self::new_match(operator, Match::new(context_key, value))
     }
 
     pub fn new_match(operator: Operator, matches: Match) -> Self {
         Self(HashMap::from_iter(vec![(operator, matches)].into_iter()))
     }
 
-    pub fn insert<V>(&mut self, operator: Operator, context_key: QualifiedName, value: V)
+    pub fn insert<S>(&mut self, operator: Operator, context_key: QualifiedName, value: S)
     where
-        V: Into<ConditionValue>,
+        S: Into<ConditionValue>,
     {
         if let Some(existing) = self.0.get_mut(&operator) {
             existing.insert(context_key, value);
@@ -483,21 +550,24 @@ impl From<HashMap<QualifiedName, Vec<ConditionValue>>> for Match {
 
 impl IamValue for Match {
     fn to_json(&self) -> Result<Value, IamFormatError> {
-        vec_map_to_json(self)
+        display_vec_map_to_json(self)
     }
 
     fn from_json(value: &Value) -> Result<Self, IamFormatError> {
         if let Value::Object(object) = value {
             let results: Result<Vec<(QualifiedName, Vec<ConditionValue>)>, IamFormatError> = object
                 .iter()
-                .map(
-                    |(k, v)| match (QualifiedName::from_str(k), value_vec_from_json(v)) {
+                .map(|(k, v)| {
+                    match (
+                        QualifiedName::from_str(k),
+                        string_vec_from_json(v, CONDITION_VALUE_NAME),
+                    ) {
                         (Ok(k), Ok(v)) => Ok((k, v)),
                         (Ok(_), Err(e)) => Err(e),
                         (Err(e), Ok(_)) => Err(e),
                         (Err(e), Err(_)) => Err(e),
-                    },
-                )
+                    }
+                })
                 .collect();
             Ok(Self(HashMap::from_iter(results?)))
         } else {
@@ -506,36 +576,28 @@ impl IamValue for Match {
     }
 }
 
-#[inline]
-fn value_vec_from_json(value: &Value) -> Result<Vec<ConditionValue>, IamFormatError> {
-    if let Value::Array(arr) = value {
-        arr.iter().map(ConditionValue::from_json).collect()
-    } else {
-        Ok(vec![ConditionValue::from_json(value)?])
-    }
-}
-
 impl Match {
-    pub fn new_one<V>(context_key: QualifiedName, value: V) -> Self
+    pub fn new_one<S>(context_key: QualifiedName, value: S) -> Self
     where
-        V: Into<ConditionValue>,
+        S: Into<ConditionValue>,
     {
         Self::new(context_key, vec![value])
     }
 
-    pub fn new<V>(context_key: QualifiedName, values: Vec<V>) -> Self
+    pub fn new<S>(context_key: QualifiedName, values: Vec<S>) -> Self
     where
-        V: Into<ConditionValue>,
+        S: Into<ConditionValue>,
     {
         Self(HashMap::from_iter(
             vec![(context_key, values.into_iter().map(|v| v.into()).collect())].into_iter(),
         ))
     }
 
-    pub fn insert<V>(&mut self, context_key: QualifiedName, value: V)
+    pub fn insert<S>(&mut self, context_key: QualifiedName, value: S)
     where
-        V: Into<ConditionValue>,
+        S: Into<ConditionValue>,
     {
+        let context_key = context_key;
         if let Some(existing) = self.0.get_mut(&context_key) {
             existing.push(value.into());
         } else {
@@ -543,10 +605,11 @@ impl Match {
         }
     }
 
-    pub fn extend<V>(&mut self, context_key: QualifiedName, values: Vec<V>)
+    pub fn extend<S>(&mut self, context_key: QualifiedName, values: Vec<S>)
     where
-        V: Into<ConditionValue>,
+        S: Into<ConditionValue>,
     {
+        let context_key = context_key;
         let values: Vec<ConditionValue> = values.into_iter().map(|v| v.into()).collect();
         if let Some(existing) = self.0.get_mut(&context_key) {
             existing.extend(values);
@@ -562,10 +625,12 @@ impl Match {
 
 // ------------------------------------------------------------------------------------------------
 
+const CHAR_OPERATOR_SEP: char = ':';
+
 impl Display for Operator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(quantifier) = &self.quantifier {
-            write!(f, "{}:", quantifier)?;
+            write!(f, "{}{}", quantifier, CHAR_OPERATOR_SEP)?;
         }
 
         write!(f, "{}", self.operator)?;
@@ -582,7 +647,7 @@ impl FromStr for Operator {
     type Err = IamFormatError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut parts: Vec<&str> = s.split(":").collect();
+        let mut parts: Vec<&str> = s.split(CHAR_OPERATOR_SEP).collect();
         if parts.len() == 1 || parts.len() == 2 {
             let mut operator = Operator {
                 quantifier: None,
@@ -817,7 +882,7 @@ impl Operator {
         }
     }
 
-    pub fn for_any(&self) -> bool {
+    pub fn is_for_any(&self) -> bool {
         matches!(self.quantifier, Some(Quantifier::ForAnyValue))
     }
 
@@ -825,7 +890,7 @@ impl Operator {
         self.quantifier = Some(Quantifier::ForAnyValue);
     }
 
-    pub fn for_all(&self) -> bool {
+    pub fn is_for_all(&self) -> bool {
         matches!(self.quantifier, Some(Quantifier::ForAllValues))
     }
 
@@ -833,7 +898,7 @@ impl Operator {
         self.quantifier = Some(Quantifier::ForAllValues);
     }
 
-    pub fn if_exists(&self) -> bool {
+    pub fn is_if_exists(&self) -> bool {
         self.if_exists
     }
 
@@ -870,6 +935,12 @@ impl FromStr for Quantifier {
 }
 
 // ------------------------------------------------------------------------------------------------
+
+impl From<GlobalOperator> for QualifiedName {
+    fn from(v: GlobalOperator) -> Self {
+        QualifiedName::new_unchecked(v.to_string())
+    }
+}
 
 impl Display for GlobalOperator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -948,113 +1019,118 @@ impl FromStr for GlobalOperator {
 
 // ------------------------------------------------------------------------------------------------
 
-impl From<String> for ConditionValue {
-    fn from(v: String) -> Self {
-        Self::String(v)
+lazy_static! {
+    static ref REGEX_VARIABLE: Regex = Regex::new(r"\$\{([^$}]+)\}").unwrap();
+}
+
+impl Display for ConditionValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
-impl From<&str> for ConditionValue {
-    fn from(v: &str) -> Self {
-        Self::String(v.to_string())
+impl Deref for ConditionValue {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-impl From<IpAddr> for ConditionValue {
-    fn from(v: IpAddr) -> Self {
-        Self::String(v.to_string())
+impl<T> From<T> for ConditionValue
+where
+    T: Into<String>,
+{
+    fn from(s: T) -> Self {
+        Self(s.into())
     }
 }
 
-#[cfg(feature = "chrono")]
-impl From<chrono::DateTime<chrono::offset::Utc>> for ConditionValue {
-    fn from(v: chrono::DateTime<chrono::offset::Utc>) -> Self {
-        Self::String(v.to_rfc3339_opts(chrono::SecondsFormat::Millis, true))
-    }
-}
-
-impl From<QualifiedName> for ConditionValue {
-    fn from(v: QualifiedName) -> Self {
-        Self::String(v.to_string())
-    }
-}
-
-impl From<ARN> for ConditionValue {
-    fn from(v: ARN) -> Self {
-        Self::String(v.to_string())
-    }
-}
-
-impl From<i64> for ConditionValue {
-    fn from(v: i64) -> Self {
-        Self::Integer(v)
-    }
-}
-
-impl From<f64> for ConditionValue {
-    fn from(v: f64) -> Self {
-        Self::Float(v)
-    }
-}
-
-impl From<bool> for ConditionValue {
-    fn from(v: bool) -> Self {
-        Self::Bool(v)
-    }
-}
-
-impl IamValue for ConditionValue {
-    fn to_json(&self) -> Result<Value, IamFormatError> {
-        Ok(match self {
-            Self::String(v) => Value::String(v.to_string()),
-            Self::Integer(v) => Value::Number(Number::from(*v)),
-            Self::Float(v) => Value::Number(Number::from_f64(*v).unwrap()),
-            Self::Bool(v) => Value::Bool(*v),
-        })
+impl ConditionValue {
+    /// Return `true` if the identifier contains variables of the form
+    /// `${name}`, else `false`.
+    pub fn has_variables(&self) -> bool {
+        REGEX_VARIABLE.is_match(self.deref())
     }
 
-    fn from_json(value: &Value) -> Result<Self, IamFormatError>
+    /// Replace any variables in the string with values from the context,
+    /// returning a new value if the replacements result in a legal identifier
+    /// string. The
+    pub fn replace_variables<V>(&self, context: &HashMap<String, V>) -> Result<Self, IamFormatError>
     where
-        Self: Sized,
+        V: Clone + Into<String>,
     {
-        match value {
-            Value::Bool(v) => Ok(ConditionValue::Bool(*v)),
-            Value::Number(v) => {
-                if let Some(v) = v.as_i64() {
-                    Ok(ConditionValue::Integer(v))
-                } else if let Some(v) = v.as_f64() {
-                    Ok(ConditionValue::Float(v))
-                } else {
-                    type_mismatch(
-                        CONDITION_VALUE_NAME,
-                        vec![JSON_NUMBER_TYPE_NAME_FLOAT, JSON_NUMBER_TYPE_NAME_INTEGER].join("|"),
-                        JSON_NUMBER_TYPE_NAME_UNSIGNED,
-                    )
-                    .into()
-                }
+        let new_text = REGEX_VARIABLE.replace_all(self.deref(), |caps: &Captures<'_>| {
+            if let Some(value) = context.get(&caps[1]) {
+                value.clone().into()
+            } else {
+                format!("${{{}}}", &caps[1])
             }
-            Value::String(v) => Ok(ConditionValue::String(v.to_string())),
-            _ => type_mismatch(
-                CONDITION_VALUE_NAME,
-                format!(
-                    "{}|{}|{}",
-                    JSON_TYPE_NAME_BOOL, JSON_TYPE_NAME_NUMBER, JSON_TYPE_NAME_STRING
-                ),
-                json_type_name(value),
-            )
-            .into(),
-        }
+        });
+        Ok(Self(new_text.to_string()))
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+
+impl Display for GlobalConditionKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}{}{}",
+            GLOBAL_CONDITION_KEY_NAMESPACE,
+            NAMESPACE_SEPARATOR,
+            match self {
+                Self::CalledVia => GLOBAL_CONDITION_KEY_CALLED_VIA,
+                Self::CalledViaFirst => GLOBAL_CONDITION_KEY_CALLED_VIA_FIRST,
+                Self::CalledViaLast => GLOBAL_CONDITION_KEY_CALLED_VIA_LAST,
+                Self::CurrentTime => GLOBAL_CONDITION_KEY_CURRENT_TIME,
+                Self::EpochTime => GLOBAL_CONDITION_KEY_EPOCH_TIME,
+                Self::FederatedProvider => GLOBAL_CONDITION_KEY_FEDERATED_PROVIDER,
+                Self::MultiFactorAuthAge => GLOBAL_CONDITION_KEY_MULTIFACTOR_AUTH_AGE,
+                Self::MultiFactorAuthPresent => GLOBAL_CONDITION_KEY_MULTIFACTOR_AUTH_PRESENT,
+                Self::PrincipalAccount => GLOBAL_CONDITION_KEY_PRINCIPAL_ACCOUNT,
+                Self::PrincipalArn => GLOBAL_CONDITION_KEY_PRINCIPAL_ARN,
+                Self::PrincipalIsAWSService => GLOBAL_CONDITION_KEY_PRINCIPAL_IS_AWS_SERVICE,
+                Self::PrincipalOrgID => GLOBAL_CONDITION_KEY_PRINCIPAL_ORG_ID,
+                Self::PrincipalOrgPaths => GLOBAL_CONDITION_KEY_PRINCIPAL_ORG_PATHS,
+                Self::PrincipalServiceName => GLOBAL_CONDITION_KEY_PRINCIPAL_SERVICE_NAME,
+                Self::PrincipalServiceNamesList =>
+                    GLOBAL_CONDITION_KEY_PRINCIPAL_SERVICE_NAMES_LIST,
+                Self::PrincipalTag => GLOBAL_CONDITION_KEY_PRINCIPAL_TAG,
+                Self::PrincipalType => GLOBAL_CONDITION_KEY_PRINCIPAL_TYPE,
+                Self::Referer => GLOBAL_CONDITION_KEY_REFERER,
+                Self::RequestedRegion => GLOBAL_CONDITION_KEY_REQUESTED_REGION,
+                Self::RequestTag => GLOBAL_CONDITION_KEY_REQUEST_TAG,
+                Self::ResourceAccount => GLOBAL_CONDITION_KEY_RESOURCE_ACCOUNT,
+                Self::ResourceOrgID => GLOBAL_CONDITION_KEY_RESOURCE_ORG_ID,
+                Self::ResourceOrgPaths => GLOBAL_CONDITION_KEY_RESOURCE_ORG_PATHS,
+                Self::ResourceTag => GLOBAL_CONDITION_KEY_RESOURCE_TAG,
+                Self::SecureTransport => GLOBAL_CONDITION_KEY_SECURE_TRANSPORT,
+                Self::SourceAccount => GLOBAL_CONDITION_KEY_SOURCE_ACCOUNT,
+                Self::SourceArn => GLOBAL_CONDITION_KEY_SOURCE_ARN,
+                Self::SourceIdentity => GLOBAL_CONDITION_KEY_SOURCE_IDENTITY,
+                Self::SourceIp => GLOBAL_CONDITION_KEY_SOURCE_IP,
+                Self::SourceVpc => GLOBAL_CONDITION_KEY_SOURCE_VPC,
+                Self::SourceVpce => GLOBAL_CONDITION_KEY_SOURCE_VPCE,
+                Self::TagKeys => GLOBAL_CONDITION_KEY_TAG_KEYS,
+                Self::TokenIssueTime => GLOBAL_CONDITION_KEY_TOKEN_ISSUE_TIME,
+                Self::UserAgent => GLOBAL_CONDITION_KEY_USER_AGENT,
+                Self::UserId => GLOBAL_CONDITION_KEY_USERID,
+                Self::UserName => GLOBAL_CONDITION_KEY_USERNAME,
+                Self::ViaAWSService => GLOBAL_CONDITION_KEY_VIA_AWS_SERVICE,
+                Self::VpcSourceIp => GLOBAL_CONDITION_KEY_VPC_SOURCE_IP,
+            }
+        )
+    }
+}
+
+impl From<GlobalConditionKey> for QualifiedName {
+    fn from(key: GlobalConditionKey) -> Self {
+        QualifiedName::new_unchecked(key.to_string())
     }
 }
 
 // ------------------------------------------------------------------------------------------------
 // Modules
 // ------------------------------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------------------------------
-// Unit Tests
-// ------------------------------------------------------------------------------------------------
-
-#[cfg(test)]
-mod tests {
-}

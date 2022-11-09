@@ -20,7 +20,7 @@ use crate::{
 use aws_arn::{AccountIdentifier, ArnError, ARN};
 use serde_json::{Map, Value};
 
-use super::naming::{CanonicalUserId, ServiceName};
+use super::naming::{CanonicalUserId, HostName, ServiceName};
 
 // ------------------------------------------------------------------------------------------------
 // Public Types
@@ -55,16 +55,28 @@ pub enum Principal {
     NotPrincipal(OrAny<PrincipalMap>),
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum PrincipalKind {
+    Aws(ARN),
+    Federated(HostName),
+    Service(ServiceName),
+    CanonicalUser(CanonicalUserId),
+}
+
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct PrincipalMap {
     aws: Vec<ARN>,
-    federated: Vec<ServiceName>,
+    federated: Vec<HostName>,
     services: Vec<ServiceName>,
     canonical_users: Vec<CanonicalUserId>,
 }
 
 // ------------------------------------------------------------------------------------------------
 // Public Functions
+// ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+// Private Types
 // ------------------------------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------------------------------
@@ -113,134 +125,6 @@ impl IamProperty for Principal {
     }
 }
 
-impl Principal {
-    pub fn these_aws(principals: Vec<ARN>) -> Self {
-        let mut map = PrincipalMap::default();
-        map.extend_aws(principals);
-        Self::Principal(OrAny::Some(map))
-    }
-
-    pub fn not_these_aws(principals: Vec<ARN>) -> Self {
-        let mut map = PrincipalMap::default();
-        map.extend_aws(principals);
-        Self::NotPrincipal(OrAny::Some(map))
-    }
-
-    pub fn these_federated(principals: Vec<ServiceName>) -> Self {
-        let mut map = PrincipalMap::default();
-        map.extend_federated(principals);
-        Self::Principal(OrAny::Some(map))
-    }
-
-    pub fn not_these_federated(principals: Vec<ServiceName>) -> Self {
-        let mut map = PrincipalMap::default();
-        map.extend_federated(principals);
-        Self::NotPrincipal(OrAny::Some(map))
-    }
-
-    pub fn these_services(principals: Vec<ServiceName>) -> Self {
-        let mut map = PrincipalMap::default();
-        map.extend_services(principals);
-        Self::Principal(OrAny::Some(map))
-    }
-
-    pub fn not_these_services(principals: Vec<ServiceName>) -> Self {
-        let mut map = PrincipalMap::default();
-        map.extend_services(principals);
-        Self::NotPrincipal(OrAny::Some(map))
-    }
-
-    pub fn these_canonical_users(principals: Vec<CanonicalUserId>) -> Self {
-        let mut map = PrincipalMap::default();
-        map.extend_canonical_users(principals);
-        Self::Principal(OrAny::Some(map))
-    }
-
-    pub fn not_these_canonical_users(principals: Vec<CanonicalUserId>) -> Self {
-        let mut map = PrincipalMap::default();
-        map.extend_canonical_users(principals);
-        Self::NotPrincipal(OrAny::Some(map))
-    }
-
-    pub fn insert_aws(&mut self, principal: ARN) {
-        let maybe_map = self.inner_mut();
-        if let OrAny::Some(map) = maybe_map {
-            map.insert_aws(principal);
-        }
-    }
-
-    pub fn aws_iter(&self) -> Option<impl Iterator<Item = &ARN>> {
-        let maybe_map = self.inner();
-        if let OrAny::Some(map) = maybe_map {
-            Some(map.aws_iter())
-        } else {
-            None
-        }
-    }
-
-    pub fn insert_federated(&mut self, principal: ServiceName) {
-        let maybe_map = self.inner_mut();
-        if let OrAny::Some(map) = maybe_map {
-            map.insert_federated(principal);
-        }
-    }
-
-    pub fn federated_iter(&self) -> Option<impl Iterator<Item = &ServiceName>> {
-        let maybe_map = self.inner();
-        if let OrAny::Some(map) = maybe_map {
-            Some(map.federated_iter())
-        } else {
-            None
-        }
-    }
-
-    pub fn insert_service(&mut self, principal: ServiceName) {
-        let maybe_map = self.inner_mut();
-        if let OrAny::Some(map) = maybe_map {
-            map.insert_service(principal);
-        }
-    }
-
-    pub fn service_iter(&self) -> Option<impl Iterator<Item = &ServiceName>> {
-        let maybe_map = self.inner();
-        if let OrAny::Some(map) = maybe_map {
-            Some(map.service_iter())
-        } else {
-            None
-        }
-    }
-
-    pub fn insert_canonical_user(&mut self, principal: CanonicalUserId) {
-        let maybe_map = self.inner_mut();
-        if let OrAny::Some(map) = maybe_map {
-            map.insert_canonical_user(principal);
-        }
-    }
-
-    pub fn canonical_user_iter(&self) -> Option<impl Iterator<Item = &CanonicalUserId>> {
-        let maybe_map = self.inner();
-        if let OrAny::Some(map) = maybe_map {
-            Some(map.canonical_user_iter())
-        } else {
-            None
-        }
-    }
-
-    fn inner(&self) -> &OrAny<PrincipalMap> {
-        match self {
-            Principal::Principal(map) => map,
-            Principal::NotPrincipal(map) => map,
-        }
-    }
-
-    fn inner_mut(&mut self) -> &mut OrAny<PrincipalMap> {
-        match self {
-            Principal::Principal(map) => map,
-            Principal::NotPrincipal(map) => map,
-        }
-    }
-}
-
 impl MaybeAny<PrincipalMap> for Principal {
     fn new_any() -> Self
     where
@@ -258,13 +142,84 @@ impl MaybeAny<PrincipalMap> for Principal {
 
     fn inner(&self) -> &OrAny<PrincipalMap> {
         match self {
-            Principal::Principal(v) => v,
-            Principal::NotPrincipal(v) => v,
+            Self::Principal(v) => v,
+            Self::NotPrincipal(v) => v,
         }
     }
 
     fn is_negative(&self) -> bool {
-        matches!(self, Principal::NotPrincipal(_))
+        matches!(self, Self::NotPrincipal(_))
+    }
+}
+
+impl Principal {
+    pub fn this<T>(principal: T) -> Self
+    where
+        T: Into<PrincipalKind>,
+    {
+        Self::Principal(OrAny::Some(PrincipalMap::from(principal.into())))
+    }
+
+    pub fn these<T>(principals: Vec<T>) -> Self
+    where
+        T: Into<PrincipalKind>,
+    {
+        Self::Principal(OrAny::Some(PrincipalMap::from(principals)))
+    }
+
+    pub fn not_this<T>(principal: T) -> Self
+    where
+        T: Into<PrincipalKind>,
+    {
+        Self::NotPrincipal(OrAny::Some(PrincipalMap::from(principal.into())))
+    }
+
+    pub fn not_these<T>(principals: Vec<T>) -> Self
+    where
+        T: Into<PrincipalKind>,
+    {
+        Self::NotPrincipal(OrAny::Some(PrincipalMap::from(principals)))
+    }
+
+    pub fn is_any(&self) -> bool {
+        matches!(self.inner(), OrAny::Any)
+    }
+
+    pub fn is_some(&self) -> bool {
+        matches!(self.inner(), OrAny::Some(_))
+    }
+
+    fn inner_mut(&mut self) -> &mut OrAny<PrincipalMap> {
+        match self {
+            Principal::Principal(map) => map,
+            Principal::NotPrincipal(map) => map,
+        }
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+
+impl From<ARN> for PrincipalKind {
+    fn from(v: ARN) -> Self {
+        Self::Aws(v)
+    }
+}
+
+impl From<HostName> for PrincipalKind {
+    fn from(v: HostName) -> Self {
+        Self::Federated(v)
+    }
+}
+
+impl From<ServiceName> for PrincipalKind {
+    fn from(v: ServiceName) -> Self {
+        Self::Service(v)
+    }
+}
+
+impl From<CanonicalUserId> for PrincipalKind {
+    fn from(v: CanonicalUserId) -> Self {
+        Self::CanonicalUser(v)
     }
 }
 
@@ -297,6 +252,22 @@ impl IamValue for OrAny<PrincipalMap> {
 }
 
 // ------------------------------------------------------------------------------------------------
+
+impl From<PrincipalKind> for PrincipalMap {
+    fn from(v: PrincipalKind) -> Self {
+        let mut map = Self::default();
+        map.insert(v);
+        map
+    }
+}
+
+impl From<Vec<PrincipalKind>> for PrincipalMap {
+    fn from(v: Vec<PrincipalKind>) -> Self {
+        let mut map = Self::default();
+        map.extend(v);
+        map
+    }
+}
 
 impl IamValue for PrincipalMap {
     fn to_json(&self) -> Result<Value, IamFormatError> {
@@ -344,7 +315,7 @@ impl IamValue for PrincipalMap {
                 principals.aws = results;
             }
             if let Some(value) = object.get(PRINCIPAL_TYPE_FEDERATED) {
-                let results: Vec<ServiceName> = vec_from_str_json(value, PRINCIPAL_TYPE_FEDERATED)?;
+                let results: Vec<HostName> = vec_from_str_json(value, PRINCIPAL_TYPE_FEDERATED)?;
                 principals.federated = results;
             }
             if let Some(value) = object.get(PRINCIPAL_TYPE_SERVICE) {
@@ -363,8 +334,97 @@ impl IamValue for PrincipalMap {
     }
 }
 
+impl PrincipalMap {
+    pub fn insert<T>(&mut self, principal: T)
+    where
+        T: Into<PrincipalKind>,
+    {
+        match principal.into() {
+            PrincipalKind::Aws(v) => self.insert_aws(v),
+            PrincipalKind::Federated(v) => self.insert_federated(v),
+            PrincipalKind::Service(v) => self.insert_service(v),
+            PrincipalKind::CanonicalUser(v) => self.insert_canonical_user(v),
+        }
+    }
+    pub fn extend<T>(&mut self, principals: Vec<T>)
+    where
+        T: Into<PrincipalKind>,
+    {
+        principals.into_iter().for_each(|p| self.insert(p))
+    }
+
+    pub fn insert_aws(&mut self, value: ARN) {
+        self.aws.push(value)
+    }
+
+    pub fn extend_aws(&mut self, values: Vec<ARN>) {
+        self.aws.extend(values.into_iter());
+    }
+
+    pub fn insert_federated(&mut self, value: HostName) {
+        self.federated.push(value)
+    }
+
+    pub fn extend_federated(&mut self, values: Vec<HostName>) {
+        self.federated.extend(values.into_iter());
+    }
+
+    pub fn insert_service(&mut self, value: ServiceName) {
+        self.services.push(value)
+    }
+
+    pub fn extend_services(&mut self, values: Vec<ServiceName>) {
+        self.services.extend(values.into_iter());
+    }
+
+    pub fn insert_canonical_user(&mut self, value: CanonicalUserId) {
+        self.canonical_users.push(value)
+    }
+
+    pub fn extend_canonical_users(&mut self, values: Vec<CanonicalUserId>) {
+        self.canonical_users.extend(values.into_iter());
+    }
+
+    /// When you use an AWS account identifier as the principal in a policy, you delegate
+    /// authority to the account. Within that account, the permissions in the policy statement
+    /// can be granted to all identities. This includes IAM users and roles in that account.
+    /// When you specify an AWS account, you can use the account ARN
+    /// (`arn:aws:iam::AWS-account-ID:root`), or a shortened form that consists of the `AWS:`
+    /// prefix followed by the account ID.
+    pub fn aws_iter(&self) -> impl Iterator<Item = &ARN> {
+        self.aws.iter()
+    }
+
+    /// Federated users either using web identity federation or using a SAML identity provider.
+    pub fn federated_iter(&self) -> impl Iterator<Item = &HostName> {
+        self.federated.iter()
+    }
+
+    /// IAM roles that can be assumed by an AWS service are called service roles. Service roles
+    /// must include a trust policy. Trust policies are resource-based policies that are attached
+    /// to a role that define which principals can assume the role. Some service roles have
+    /// predefined trust policies. However, in some cases, you must specify the service principal
+    /// in the trust policy. A service principal is an identifier that is used to grant
+    /// permissions to a service.
+    pub fn service_iter(&self) -> impl Iterator<Item = &ServiceName> {
+        self.services.iter()
+    }
+
+    /// The canonical user ID is an identifier for your account. Because this identifier is
+    /// used by Amazon S3, only this service provides IAM users with access to the canonical
+    /// user ID. You can also view the canonical user ID for your account from the AWS
+    /// Management Console while signed in as the AWS account root user.
+    pub fn canonical_user_iter(&self) -> impl Iterator<Item = &CanonicalUserId> {
+        self.canonical_users.iter()
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+// Private Functions
+// ------------------------------------------------------------------------------------------------
+
 #[inline]
-pub(crate) fn arn_vec_from_str_json(value: &Value) -> Result<Vec<ARN>, IamFormatError> {
+pub fn arn_vec_from_str_json(value: &Value) -> Result<Vec<ARN>, IamFormatError> {
     fn from_str(s: &str) -> Result<ARN, IamFormatError> {
         if s.contains(':') {
             ARN::from_str(s).map_err(ArnError::into)
@@ -396,72 +456,5 @@ pub(crate) fn arn_vec_from_str_json(value: &Value) -> Result<Vec<ARN>, IamFormat
             json_type_name(value),
         )
         .into()
-    }
-}
-
-impl PrincipalMap {
-    pub fn insert_aws(&mut self, value: ARN) {
-        self.aws.push(value)
-    }
-
-    pub fn extend_aws(&mut self, values: Vec<ARN>) {
-        self.aws.extend(values.into_iter());
-    }
-
-    pub fn insert_federated(&mut self, value: ServiceName) {
-        self.federated.push(value)
-    }
-
-    pub fn extend_federated(&mut self, values: Vec<ServiceName>) {
-        self.federated.extend(values.into_iter());
-    }
-
-    pub fn insert_service(&mut self, value: ServiceName) {
-        self.services.push(value)
-    }
-
-    pub fn extend_services(&mut self, values: Vec<ServiceName>) {
-        self.services.extend(values.into_iter());
-    }
-
-    pub fn insert_canonical_user(&mut self, value: CanonicalUserId) {
-        self.canonical_users.push(value)
-    }
-
-    pub fn extend_canonical_users(&mut self, values: Vec<CanonicalUserId>) {
-        self.canonical_users.extend(values.into_iter());
-    }
-
-    /// When you use an AWS account identifier as the principal in a policy, you delegate
-    /// authority to the account. Within that account, the permissions in the policy statement
-    /// can be granted to all identities. This includes IAM users and roles in that account.
-    /// When you specify an AWS account, you can use the account ARN
-    /// (`arn:aws:iam::AWS-account-ID:root`), or a shortened form that consists of the `AWS:`
-    /// prefix followed by the account ID.
-    pub fn aws_iter(&self) -> impl Iterator<Item = &ARN> {
-        self.aws.iter()
-    }
-
-    /// Federated users either using web identity federation or using a SAML identity provider.
-    pub fn federated_iter(&self) -> impl Iterator<Item = &ServiceName> {
-        self.federated.iter()
-    }
-
-    /// IAM roles that can be assumed by an AWS service are called service roles. Service roles
-    /// must include a trust policy. Trust policies are resource-based policies that are attached
-    /// to a role that define which principals can assume the role. Some service roles have
-    /// predefined trust policies. However, in some cases, you must specify the service principal
-    /// in the trust policy. A service principal is an identifier that is used to grant
-    /// permissions to a service.
-    pub fn service_iter(&self) -> impl Iterator<Item = &ServiceName> {
-        self.services.iter()
-    }
-
-    /// The canonical user ID is an identifier for your account. Because this identifier is
-    /// used by Amazon S3, only this service provides IAM users with access to the canonical
-    /// user ID. You can also view the canonical user ID for your account from the AWS
-    /// Management Console while signed in as the AWS account root user.
-    pub fn canonical_user_iter(&self) -> impl Iterator<Item = &CanonicalUserId> {
-        self.canonical_users.iter()
     }
 }

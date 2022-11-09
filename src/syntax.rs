@@ -27,6 +27,7 @@ pub trait IamValue {
 
 #[allow(unused_variables)]
 pub trait IamProperty {
+    #[allow(clippy::wrong_self_convention)]
     fn into_json_object(&self, object: &mut Map<String, Value>) -> Result<(), IamFormatError>;
 
     fn from_json_object(value: &Map<String, Value>) -> Result<Self, IamFormatError>
@@ -128,15 +129,80 @@ pub const CONDITION_OPERATOR_ARN_LIKE: &str = "ArnLike";
 pub const CONDITION_OPERATOR_ARN_NOT_LIKE: &str = "ArnNotLike";
 pub const CONDITION_OPERATOR_NULL: &str = "Null";
 
+pub const GLOBAL_CONDITION_KEY_NAMESPACE: &str = "aws";
+
+pub const GLOBAL_CONDITION_KEY_CALLED_VIA: &str = "CalledVia";
+pub const GLOBAL_CONDITION_KEY_CALLED_VIA_FIRST: &str = "CalledViaFirst";
+pub const GLOBAL_CONDITION_KEY_CALLED_VIA_LAST: &str = "CalledViaLast";
+pub const GLOBAL_CONDITION_KEY_CURRENT_TIME: &str = "CurrentTime";
+pub const GLOBAL_CONDITION_KEY_EPOCH_TIME: &str = "EpochTime";
+pub const GLOBAL_CONDITION_KEY_FEDERATED_PROVIDER: &str = "FederatedProvider";
+pub const GLOBAL_CONDITION_KEY_MULTIFACTOR_AUTH_AGE: &str = "MultiFactorAuthAge";
+pub const GLOBAL_CONDITION_KEY_MULTIFACTOR_AUTH_PRESENT: &str = "MultiFactorAuthPresent";
+pub const GLOBAL_CONDITION_KEY_PRINCIPAL_ACCOUNT: &str = "PrincipalAccount";
+pub const GLOBAL_CONDITION_KEY_PRINCIPAL_ARN: &str = "PrincipalArn";
+pub const GLOBAL_CONDITION_KEY_PRINCIPAL_IS_AWS_SERVICE: &str = "PrincipalIsAWSService";
+pub const GLOBAL_CONDITION_KEY_PRINCIPAL_ORG_ID: &str = "PrincipalOrgID";
+pub const GLOBAL_CONDITION_KEY_PRINCIPAL_ORG_PATHS: &str = "PrincipalOrgPaths";
+pub const GLOBAL_CONDITION_KEY_PRINCIPAL_SERVICE_NAME: &str = "PrincipalServiceName";
+pub const GLOBAL_CONDITION_KEY_PRINCIPAL_SERVICE_NAMES_LIST: &str = "PrincipalServiceNamesList";
+pub const GLOBAL_CONDITION_KEY_PRINCIPAL_TAG: &str = "PrincipalTag";
+pub const GLOBAL_CONDITION_KEY_PRINCIPAL_TYPE: &str = "PrincipalType";
+pub const GLOBAL_CONDITION_KEY_REFERER: &str = "referer";
+pub const GLOBAL_CONDITION_KEY_REQUESTED_REGION: &str = "RequestedRegion";
+pub const GLOBAL_CONDITION_KEY_REQUEST_TAG: &str = "RequestTag/";
+pub const GLOBAL_CONDITION_KEY_RESOURCE_ACCOUNT: &str = "ResourceAccount";
+pub const GLOBAL_CONDITION_KEY_RESOURCE_ORG_ID: &str = "ResourceOrgID";
+pub const GLOBAL_CONDITION_KEY_RESOURCE_ORG_PATHS: &str = "ResourceOrgPaths";
+pub const GLOBAL_CONDITION_KEY_RESOURCE_TAG: &str = "ResourceTag/";
+pub const GLOBAL_CONDITION_KEY_SECURE_TRANSPORT: &str = "SecureTransport";
+pub const GLOBAL_CONDITION_KEY_SOURCE_ACCOUNT: &str = "SourceAccount";
+pub const GLOBAL_CONDITION_KEY_SOURCE_ARN: &str = "SourceArn";
+pub const GLOBAL_CONDITION_KEY_SOURCE_IDENTITY: &str = "SourceIdentity";
+pub const GLOBAL_CONDITION_KEY_SOURCE_IP: &str = "SourceIp";
+pub const GLOBAL_CONDITION_KEY_SOURCE_VPC: &str = "SourceVpc";
+pub const GLOBAL_CONDITION_KEY_SOURCE_VPCE: &str = "SourceVpce";
+pub const GLOBAL_CONDITION_KEY_TAG_KEYS: &str = "TagKeys";
+pub const GLOBAL_CONDITION_KEY_TOKEN_ISSUE_TIME: &str = "TokenIssueTime";
+pub const GLOBAL_CONDITION_KEY_USER_AGENT: &str = "UserAgent";
+pub const GLOBAL_CONDITION_KEY_USERID: &str = "userid";
+pub const GLOBAL_CONDITION_KEY_USERNAME: &str = "username";
+pub const GLOBAL_CONDITION_KEY_VIA_AWS_SERVICE: &str = "ViaAWSService";
+pub const GLOBAL_CONDITION_KEY_VPC_SOURCE_IP: &str = "VpcSourceIp";
+
+pub const IAM_CONDITION_KEY_NAMESPACE: &str = "aws";
+
+pub const IAM_CONDITION_KEY_ASSOCIATED_RESOURCE_ARN: &str = "AssociatedResourceArn";
+pub const IAM_CONDITION_KEY_AWS_SERVICE_NAME: &str = "AWSServiceName";
+pub const IAM_CONDITION_KEY_ORGANIZATIONS_POLICY_ID: &str = "OrganizationsPolicyId";
+pub const IAM_CONDITION_KEY_PASSED_TO_SERVICE: &str = "PassedToService";
+pub const IAM_CONDITION_KEY_PERMISSIONS_BOUNDARY: &str = "PermissionsBoundary";
+pub const IAM_CONDITION_KEY_POLICY_ARN: &str = "PolicyARN";
+pub const IAM_CONDITION_KEY_RESOURCE_TAG: &str = "ResourceTag/";
+
+pub const NAMESPACE_SEPARATOR: char = ':';
+
+pub const NAMESPACE_NAME: &str = "Namespace";
+
+pub const HOST_NAME_NAME: &str = "HostName";
+
 pub const SERVICE_NAME_NAME: &str = "ServiceName";
 
 pub const QUALIFIED_NAME_NAME: &str = "QualifiedName";
+
+pub const QUALIFIED_TAG_SEPARATOR: char = '/';
 
 pub const USER_ID_NAME: &str = "CanonicalUserId";
 
 pub const VALUE_NAME: &str = "Value";
 
 pub const ARN_NAME: &str = "ARN";
+
+pub const CHAR_WILD: char = '?';
+
+pub const CHAR_WILD_ALL: char = '*';
+
+pub const HOSTNAME_SEPARATOR: char = '.';
 
 // ------------------------------------------------------------------------------------------------
 // Implementations
@@ -176,15 +242,36 @@ pub(crate) fn json_type_name(v: &Value) -> String {
     .to_string()
 }
 
+// ------------------------------------------------------------------------------------------------
+
+// #[inline]
+// pub(crate) fn vec_map_to_json<K, V>(map: &HashMap<K, Vec<V>>) -> Result<Value, IamFormatError>
+// where
+//     K: Display,
+//     V: IamValue,
+// {
+//     let result: Result<Vec<(String, Value)>, IamFormatError> = map
+//         .iter()
+//         .map(|(k, v)| match vec_to_json(v) {
+//             Ok(v) => Ok((k.to_string(), v)),
+//             Err(e) => Err(e),
+//         })
+//         .collect();
+//     let object = Map::from_iter(result?.into_iter());
+//     Ok(Value::Object(object))
+// }
+
 #[inline]
-pub(crate) fn vec_map_to_json<K, V>(map: &HashMap<K, Vec<V>>) -> Result<Value, IamFormatError>
+pub(crate) fn display_vec_map_to_json<K, V>(
+    map: &HashMap<K, Vec<V>>,
+) -> Result<Value, IamFormatError>
 where
     K: Display,
-    V: IamValue,
+    V: Display,
 {
     let result: Result<Vec<(String, Value)>, IamFormatError> = map
         .iter()
-        .map(|(k, v)| match vec_to_json(v) {
+        .map(|(k, v)| match display_vec_to_json(v) {
             Ok(v) => Ok((k.to_string(), v)),
             Err(e) => Err(e),
         })
@@ -210,22 +297,22 @@ where
 //     Ok(Value::Object(object))
 // }
 
-#[inline]
-pub(crate) fn vec_to_json<T>(vec: &Vec<T>) -> Result<Value, IamFormatError>
-where
-    T: IamValue,
-{
-    let value = match vec.len() {
-        0 => Value::Null,
-        1 => vec.get(0).unwrap().to_json()?,
-        _ => {
-            let result: Result<Vec<Value>, IamFormatError> =
-                vec.iter().map(|v| v.to_json()).collect();
-            Value::Array(result?)
-        }
-    };
-    Ok(value)
-}
+// #[inline]
+// pub(crate) fn vec_to_json<T>(vec: &Vec<T>) -> Result<Value, IamFormatError>
+// where
+//     T: IamValue,
+// {
+//     let value = match vec.len() {
+//         0 => Value::Null,
+//         1 => vec.get(0).unwrap().to_json()?,
+//         _ => {
+//             let result: Result<Vec<Value>, IamFormatError> =
+//                 vec.iter().map(|v| v.to_json()).collect();
+//             Value::Array(result?)
+//         }
+//     };
+//     Ok(value)
+// }
 
 #[inline]
 pub(crate) fn display_to_json<T>(value: T) -> Value
@@ -248,17 +335,33 @@ where
     Ok(value)
 }
 
-// #[inline]
-// pub(crate) fn vec_from_json<V>(value: &Value, name: &str) -> Result<Vec<V>, IamFormatError>
-// where
-//     V: IamValue,
-// {
-//     if let Value::Array(arr) = value {
-//         arr.iter().map(V::from_json).collect()
-//     } else {
-//         type_mismatch(name, JSON_TYPE_NAME_ARRAY, json_type_name(value)).into()
-//     }
-// }
+// ------------------------------------------------------------------------------------------------
+
+#[inline]
+pub(crate) fn string_vec_from_json<T>(value: &Value, name: &str) -> Result<Vec<T>, IamFormatError>
+where
+    T: From<String>,
+{
+    if let Value::String(s) = value {
+        Ok(vec![s.clone().into()])
+    } else if let Value::Array(arr) = value {
+        arr.iter()
+            .map(|v| {
+                if let Value::String(s) = v {
+                    Ok(s.clone().into())
+                } else {
+                    Err(type_mismatch(
+                        name,
+                        JSON_TYPE_NAME_STRING,
+                        json_type_name(value),
+                    ))
+                }
+            })
+            .collect()
+    } else {
+        type_mismatch(name, JSON_TYPE_NAME_ARRAY, json_type_name(value)).into()
+    }
+}
 
 #[inline]
 pub(crate) fn vec_from_str_json<V, E>(value: &Value, name: &str) -> Result<Vec<V>, IamFormatError>

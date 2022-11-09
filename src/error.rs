@@ -55,6 +55,9 @@ pub enum IamFormatError {
         #[source]
         aws_arn::ArnError,
     ),
+
+    #[error("Could not expand a variable in the value `{value}`")]
+    InvalidVariable { value: String },
 }
 
 // ------------------------------------------------------------------------------------------------

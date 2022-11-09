@@ -1,4 +1,5 @@
 use aws_iam::model::Version;
+use aws_iam::syntax::IamValue;
 use std::str::FromStr;
 
 #[test]
@@ -27,12 +28,6 @@ fn test_version_from_str_err() {
 
 #[test]
 fn test_version_to_json() {
-    assert_eq!(
-        Version::V2012.to_json().unwrap(),
-        Value::String("2012-10-17".to_string())
-    );
-    assert_eq!(
-        Version::V2008.to_json().unwrap(),
-        Value::String("2008-10-17".to_string())
-    );
+    assert_eq!(Version::V2012.to_json().unwrap(), "2012-10-17".to_string());
+    assert_eq!(Version::V2008.to_json().unwrap(), "2008-10-17".to_string());
 }

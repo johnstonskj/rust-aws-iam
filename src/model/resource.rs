@@ -90,59 +90,6 @@ impl IamProperty for Resource {
     }
 }
 
-impl Resource {
-    pub fn any_resource() -> Self {
-        Self::Resource(OrAny::Any)
-    }
-
-    pub fn this_resource(name: ARN) -> Self {
-        Self::Resource(OrAny::Some(vec![name]))
-    }
-
-    pub fn these_resources(names: Vec<ARN>) -> Self {
-        Self::Resource(OrAny::Some(names))
-    }
-
-    pub fn no_resource() -> Self {
-        Self::NotResource(OrAny::Any)
-    }
-
-    pub fn not_this_resource(name: ARN) -> Self {
-        Self::NotResource(OrAny::Some(vec![name]))
-    }
-
-    pub fn not_these_resources(names: Vec<ARN>) -> Self {
-        Self::NotResource(OrAny::Some(names))
-    }
-
-    fn inner(&self) -> &OrAny<Vec<ARN>> {
-        match self {
-            Resource::Resource(v) => v,
-            Resource::NotResource(v) => v,
-        }
-    }
-
-    pub fn is_negative(&self) -> bool {
-        matches!(self, Resource::NotResource(_))
-    }
-
-    pub fn is_any(&self) -> bool {
-        matches!(self.inner(), OrAny::Any)
-    }
-
-    pub fn is_some(&self) -> bool {
-        matches!(self.inner(), OrAny::Some(_))
-    }
-
-    pub fn some(&self) -> Option<&Vec<ARN>> {
-        if let OrAny::Some(v) = self.inner() {
-            Some(v)
-        } else {
-            None
-        }
-    }
-}
-
 impl MaybeAny<Vec<ARN>> for Resource {
     fn new_any() -> Self
     where
@@ -167,6 +114,47 @@ impl MaybeAny<Vec<ARN>> for Resource {
 
     fn is_negative(&self) -> bool {
         matches!(self, Resource::NotResource(_))
+    }
+}
+
+impl Resource {
+    pub fn this_resource(name: ARN) -> Self {
+        Self::Resource(OrAny::Some(vec![name]))
+    }
+
+    pub fn these_resources(names: Vec<ARN>) -> Self {
+        Self::Resource(OrAny::Some(names))
+    }
+
+    pub fn not_this_resource(name: ARN) -> Self {
+        Self::NotResource(OrAny::Some(vec![name]))
+    }
+
+    pub fn not_these_resources(names: Vec<ARN>) -> Self {
+        Self::NotResource(OrAny::Some(names))
+    }
+
+    fn inner(&self) -> &OrAny<Vec<ARN>> {
+        match self {
+            Resource::Resource(v) => v,
+            Resource::NotResource(v) => v,
+        }
+    }
+
+    pub fn is_any(&self) -> bool {
+        matches!(self.inner(), OrAny::Any)
+    }
+
+    pub fn is_some(&self) -> bool {
+        matches!(self.inner(), OrAny::Some(_))
+    }
+
+    pub fn some(&self) -> Option<&Vec<ARN>> {
+        if let OrAny::Some(v) = self.inner() {
+            Some(v)
+        } else {
+            None
+        }
     }
 }
 
