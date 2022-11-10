@@ -87,7 +87,6 @@ fn test_qname_with_name() {
         QualifiedName::new_unchecked("aws:foo")
     );
 
-
     let qname = QualifiedName::from_str("aws:name/bar").unwrap();
     assert_eq!(
         qname.with_name("foo/").unwrap(),
