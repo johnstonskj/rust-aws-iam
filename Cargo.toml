@@ -24,7 +24,7 @@ offline_eval = []
 service_config = []
 
 [dependencies]
-aws-arn = "0.2.1"
+aws-arn = "0.3.1"
 lazy_static = "1.4"
 regex = "1.6"
 serde = { version = "1.0", features = ["derive"] }
